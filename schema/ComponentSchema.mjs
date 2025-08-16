@@ -1,8 +1,7 @@
-import { Prop } from './PropSchema.mjs';
+import { PropSchema } from './PropSchema.mjs';
 
 export class ComponentSchema {
-    constructor({ component_type, key, name, description, component_type, version, props }) {
-        this.component_type = component_type;// extra
+    constructor({ component_type, key, name, description, version, props }) {
         this.key = key; // action.key
         this.name = name; // action.name
         this.description = description; // action.description
@@ -13,7 +12,6 @@ export class ComponentSchema {
 
     toJSON() {
         return {
-            component_type: this.component_type,
             key: this.key,
             name: this.name,
             description: this.description,

@@ -1,9 +1,8 @@
 import express from 'express';
-import { 
-    ...
-} from '../core/componentSystem.mjs';
+import componentController from '../core/ComponentSystem.mjs';
 import config from '../config.mjs';
-const host_url = config.BE_URL
+
+const host_url = config.BE_URL;
 // /v1/connect/local-project
 const router = express.Router();
 
@@ -16,8 +15,17 @@ router.get('/actions', async (req, res) => {
     }
 
     try {
-        const actions = await getAppComponents(app, 'actions', limit);
-        res.json(paginate(actions, limit));
+        // TODO: Implement getAppComponents in ComponentSystem
+        // For now, return empty array
+        const actions = [];
+        
+        res.json({
+            page_info: {
+                total_count: actions.length,
+                count: actions.length
+            },
+            data: actions
+        });
     } catch (error) {
         console.error('Error fetching actions:', error);
         res.status(500).json({ error: 'Failed to load actions' });
@@ -26,7 +34,7 @@ router.get('/actions', async (req, res) => {
 
 router.get('/components/:component_id', async (req, res) => {
     try {
-        const component = await getComponent(req.params.component_id);
+        const component = await componentController.getComponent(req.params.component_id);
         if (component) {
             res.json({ data: component });
         } else {
@@ -42,96 +50,104 @@ router.get('/components/:component_id', async (req, res) => {
 
 // POST /v1/connect/local-project/components/props
 router.post('/components/props', async (req, res) => {
-    const { external_user_id, id, prop_name, configured_props } = req.body;
+    try {
+        const { external_user_id, id, prop_name, configured_props } = req.body;
 
-    if (!external_user_id || !id || !prop_name) {
-      return res.status(400).json({
-        error: 'external_user_id, id, and prop_name are required'
-      });
-    }
+        if (!external_user_id || !id || !prop_name) {
+            return res.status(400).json({
+                error: 'external_user_id, id, and prop_name are required'
+            });
+        }
 
-    // Get component details to return prop options
-    const component = await getComponentDetails(id);
-    const prop = component.configurable_props.find(p => p.name === prop_name);
-    ..
-    const component = await componentController.getComponent(req.params.key);
-        ..
-        
-    const result = await componentController.getPropOptions(
-      component_key,
-      prop_name,
-      user_id,
-      configured_props,
-      prev_context
-  );
-..
-    if (prop && prop.remoteOptions) {
-        ...
+        const result = await componentController.getPropOptions(
+            id,
+            prop_name,
+            external_user_id,
+            configured_props || {},
+            {}
+        );
 
-      res.json({
-          props: {
-            [prop_name]: {
-              ...prop,
-              options: options
+        res.json({
+            props: {
+                [prop_name]: result
             }
-          }
         });
-    } else {
-      res.json({
-          props: {
-            [prop_name]: prop || {}
-          }
+    } catch (error) {
+        console.error('Error fetching prop options:', error);
+        res.status(404).json({
+            error: 'Component not found'
         });
     }
-    res.status(404).json({
-      error: 'Component not found'
-    });
 });
 
 // POST /v1/connect/local-project/components/configure
 router.post('/components/configure', async (req, res) => {
-    const { external_user_id, id, configured_props } = req.body;
+    try {
+        const { external_user_id, id, configured_props } = req.body;
 
-    if (!external_user_id || !id || !configured_props) {
-      return res.status(400).json({
-        error: 'external_user_id, id, and configured_props are required'
-      });
+        if (!external_user_id || !id || !configured_props) {
+            return res.status(400).json({
+                error: 'external_user_id, id, and configured_props are required'
+            });
+        }
+
+        // Get component details and return all props with configured values
+        const component = await componentController.getComponent(id);
+        if (!component) {
+            return res.status(404).json({
+                error: 'Component not found'
+            });
+        }
+
+        const responseProps = {};
+        
+        component.configurable_props.forEach(prop => {
+            responseProps[prop.name] = {
+                ...prop,
+                value: configured_props[prop.name] || prop.default
+            };
+        });
+
+        res.json({
+            props: responseProps
+        });
+    } catch (error) {
+        console.error('Error configuring component:', error);
+        res.status(404).json({
+            error: 'Component not found'
+        });
     }
-
-    // Get component details and return all props with configured values
-    const component = await getComponentDetails(id);
-    const responseProps = {};
-
-    component.configurable_props.forEach(prop => {
-      responseProps[prop.name] = {
-        ...prop,
-        value: configured_props[prop.name] || prop.default
-      };
-    });
-
-    res.json({
-        props: responseProps
-    });
-    res.status(404).json({
-      error: 'Component not found'
-    });
 });
 
 
-// POST /components/run
-router.post('/components/run', async (req, res) => {
-  const { component_key, props, user_id } = req.body;
-  
-  try {
-      const result = await componentController.runComponent(
-          component_key,
-          props,
-          user_id
-      );
-      res.json(result);
-  } catch (error) {
-      res.status(500).json({ error: error.message });
-  }
+// POST /actions/run - Execute component action
+router.post('/actions/run', async (req, res) => {
+    try {
+        const { external_user_id, id, configured_props } = req.body;
+        
+        if (!external_user_id || !id || !configured_props) {
+            return res.status(400).json({
+                error: 'external_user_id, id, and configured_props are required'
+            });
+        }
+
+        const result = await componentController.runComponent(
+            id,
+            configured_props,
+            external_user_id
+        );
+        
+        res.json({
+            run_id: `run_${Date.now()}`,
+            status: 'succeeded',
+            output: result
+        });
+    } catch (error) {
+        console.error('Error running component:', error);
+        res.status(500).json({ 
+            error: error.message || 'Failed to run component'
+        });
+    }
 });
 
 export default router;

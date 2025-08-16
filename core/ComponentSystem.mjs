@@ -4,8 +4,10 @@ import { fileURLToPath } from 'url';
 import { NodeVM } from 'vm2';
 import axios from 'axios';
 import crypto from 'crypto';
-import { App } from '../schema/AppSchema.mjs';
-import { Component } from '../schema/ComponentSchema.mjs';
+import { AppSchema } from '../schema/AppSchema.mjs';
+import { ComponentSchema } from '../schema/ComponentSchema.mjs';
+import { Connection } from '../schema/ConnectionSchema.mjs';
+import { getDB } from './database.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const COMPONENTS_ROOT = path.join(__dirname, '..',  'components');
@@ -32,7 +34,7 @@ class ComponentLoader {
             const pkg = JSON.parse(pkgData);
             const meta = pkg.custom_metadata || {};
             
-            const app = new App({
+            const app = new AppSchema({
                 id: slug,
                 name_slug: slug,
                 name: meta.name || slug,
@@ -73,13 +75,13 @@ class ComponentLoader {
             const compModule = vm.run(code, componentPath);
             const compDef = compModule.default || compModule;
             
-            const component = new Component({
+            const component = new ComponentSchema({
                 key: compDef.key,
                 name: compDef.name,
                 description: compDef.description,
-                type: compDef.type,
+                component_type: compDef.type,
                 version: compDef.version,
-                props: compDef.props,
+                props: compDef.props || {},
                 app_slug: appSlug
             });
             
@@ -149,14 +151,20 @@ class DynamicPropHandler {
         if (!component) throw new Error('Component not found');
         
         // Get connection
-        const connection = await db.get(
-            `SELECT * FROM connections WHERE user_id = ? AND app_slug = ?`,
-            [userId, component.app_slug]
-        );
+        const connection = await new Promise((resolve, reject) => {
+            getDB().get(
+                `SELECT * FROM accounts WHERE external_user_id = ? AND app_slug = ?`,
+                [userId, component.app_slug],
+                (err, row) => {
+                    if (err) reject(err);
+                    else resolve(row);
+                }
+            );
+        });
         
         if (!connection) throw new Error('No connection found');
         
-        const authData = JSON.parse(connection.auth_data);
+        const authData = JSON.parse(connection.credentials_json);
         
         // Create execution context
         const context = {
@@ -220,14 +228,20 @@ class ComponentRunner {
         if (!component) throw new Error('Component not found');
         
         // Get connection
-        const connection = await db.get(
-            `SELECT * FROM connections WHERE user_id = ? AND app_slug = ?`,
-            [userId, component.app_slug]
-        );
+        const connection = await new Promise((resolve, reject) => {
+            getDB().get(
+                `SELECT * FROM accounts WHERE external_user_id = ? AND app_slug = ?`,
+                [userId, component.app_slug],
+                (err, row) => {
+                    if (err) reject(err);
+                    else resolve(row);
+                }
+            );
+        });
         
         if (!connection) throw new Error('No connection found');
         
-        const authData = JSON.parse(connection.auth_data);
+        const authData = JSON.parse(connection.credentials_json);
         
         // Create execution context
         const context = {
@@ -326,8 +340,9 @@ class ComponentController {
         const pkg = JSON.parse(pkgData);
         const meta = pkg.custom_metadata || {};
         
-        return new App({
-            slug,
+        return new AppSchema({
+            id: slug,
+            name_slug: slug,
             name: meta.name || slug,
             description: meta.description || pkg.description,
             img_src: meta.img_src,
@@ -355,11 +370,19 @@ class ComponentController {
     }
     
     async saveConnection(userId, appSlug, authData) {
-        const id = `conn_${crypto.randomBytes(8).toString('hex')}`;
-        await db.run(
-            `INSERT INTO connections (id, user_id, app_slug, auth_data) VALUES (?, ?, ?, ?)`,
-            [id, userId, appSlug, JSON.stringify(authData)]
-        );
+        const id = `apn_${crypto.randomBytes(8).toString('hex')}`;
+        
+        await new Promise((resolve, reject) => {
+            getDB().run(
+                `INSERT INTO accounts (id, app_key, external_user_id, app_slug, credentials_json) VALUES (?, ?, ?, ?, ?)`,
+                [id, id, userId, appSlug, JSON.stringify(authData)],
+                (err) => {
+                    if (err) reject(err);
+                    else resolve();
+                }
+            );
+        });
+        
         return id;
     }
 }
