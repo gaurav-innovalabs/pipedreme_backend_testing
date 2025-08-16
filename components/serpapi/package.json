@@ -14,5 +14,14 @@
   },
   "dependencies": {
     "@pipedream/platform": "^3.0.3"
+  },
+  "custom_metadata": {
+    "img_src": "https://assets.pipedream.net/s.v0/app_Rphv6x/logo/orig",
+    "name": "SERP API",
+    "description": "Scrape Google and other search engines from our fast, easy, and complete API.",
+    "categories": [
+      "Web \u0026 App Development"
+    ],
+    "custom_fields_json": "[{\"name\":\"api_key\",\"label\":\"API Key\",\"description\":\"Sign in and copy your API Key from [Account](https://serpapi.com/account-api) tab.\",\"default\":null,\"optional\":null,\"type\":\"password\"}]"
   }
 }

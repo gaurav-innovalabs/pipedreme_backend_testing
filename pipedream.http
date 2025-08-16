@@ -1,0 +1,126 @@
+@client_secret = ...
+@client_id = ...
+
+# @base_url = https://api.pipedream.com
+@base_url = http://localhost:3000
+@pd_project_id = proj_zNsg4Me
+
+### Get OAuth token
+# @name getToken
+POST {{base_url}}/v1/oauth/token
+Content-Type: application/json
+
+{
+  "grant_type": "client_credentials",
+  "client_id": "{{client_id}}",
+  "client_secret": "{{client_secret}}"
+}
+
+### Store the token from previous response
+@auth_token = {{getToken.response.body.access_token}}
+
+### Use the token to get app info
+GET {{base_url}}/v1/apps
+Authorization: Bearer {{auth_token}}
+
+
+# @app_slug = serpapi
+@app_slug = slack
+
+### List apps with search query
+GET {{base_url}}/v1/apps?q={{app_slug}}&limit=10
+Authorization: Bearer {{auth_token}}
+
+###
+
+### Get specific app
+GET {{base_url}}/v1/apps/{{app_slug}}
+Authorization: Bearer {{auth_token}}
+
+###
+
+### List actions for SerpAPI (Pipedream v1 API)
+GET {{base_url}}/v1/connect/{{pd_project_id}}/actions?app={{app_slug}}&limit=100
+Authorization: Bearer {{auth_token}}
+X-PD-Environment: development
+
+###
+
+### List triggers for SerpAPI (Pipedream v1 API)
+GET {{base_url}}/v1/connect/{{pd_project_id}}/triggers?app={{app_slug}}&limit=100
+Authorization: Bearer {{auth_token}}
+X-PD-Environment: development
+
+@component_slug = slack-send-message
+# @component_slug = serpapi_custom-search
+# @component_slug = d_L7svdRd4
+### Get - App Triggers - Tested
+GET {{base_url}}/v1/connect/{{pd_project_id}}/components/{{component_slug}}
+Content-Type: application/json
+Authorization: Bearer {{auth_token}}
+X-PD-Environment: development
+
+### Run SerpAPI search action (Pipedream v1 API)
+POST {{base_url}}/v1/connect/{{pd_project_id}}/actions/run
+Content-Type: application/json
+Authorization: Bearer {{auth_token}}
+X-PD-Environment: development
+
+{
+  "external_user_id": "user123",
+  "id": "scrape-search-scrape-search",
+  "configured_props": {
+    "serpapi": {
+      "authProvisionId": "auth_123"
+    },
+    "q": "coffee shops near me",
+    "engine": "google",
+    "location": "Austin, Texas"
+  }
+}
+
+### Generate Token with link to connect with app - Tested
+POST {{base_url}}/v1/connect/{{pd_project_id}}/tokens
+Content-Type: application/json
+Authorization: Bearer {{auth_token}}
+X-PD-Environment: development
+
+{
+  "external_user_id": "user-123"
+}
+
+### Get App Connected Accounts with sepcific app account or all by remove last ID from URL - Tested
+GET {{base_url}}/v1/connect/{{pd_project_id}}/accounts/apn_Ogher6Q
+Content-Type: application/json
+Authorization: Bearer {{auth_token}}
+X-PD-Environment: development
+
+{ // params
+  "external_user_id": "user-123",
+  "app": "slack",
+  "include_credentials": true
+}
+
+GET {{base_url}}/v1/connect/{{pd_project_id}}/accounts?app={{app_slug}}&external_user_id=user123
+// is required params??
+
+### Delete the App Account - Tested
+DELETE {{base_url}}/v1/connect/{{pd_project_id}}/accounts/apn_Ogher6Q
+Content-Type: application/json
+Authorization: Bearer {{auth_token}}
+X-PD-Environment: development
+
+
+### Delete user
+DELETE {{base_url}}/v1/connect/{{pd_project_id}}/users/user123
+
+### EXTRA
+
+
+### View recent runs
+GET {{base_url}}/admin_logs/runs
+
+
+### Test with invalid endpoint (should return 404)
+GET {{base_url}}/invalid/endpoint
+
