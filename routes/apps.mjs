@@ -1,5 +1,5 @@
 import express from 'express';
-import componentController from '../core/ComponentSystem.mjs';
+import componentSystem from '../core/ComponentSystem.mjs';
 
 // /v1/apps
 const router = express.Router();
@@ -7,7 +7,7 @@ const router = express.Router();
 router.get('/', async (req, res) => {
     try {
         const { limit, q } = req.query;
-        let apps = await componentController.getApps();
+        let apps = await componentSystem.getApps();
         if (q) {
             apps = apps.filter(app => 
                 app.name.trim().toLowerCase().includes(q.trim().toLowerCase())
@@ -37,7 +37,7 @@ router.get('/', async (req, res) => {
 // GET /v1/apps/:slug
 router.get('/:app_slug', async (req, res) => {
     try {
-        const app = await componentController.getApp(req.params.app_slug);
+        const app = await componentSystem.getApp(req.params.app_slug);
         if (app) {
             res.json({ data: app });
         } else {

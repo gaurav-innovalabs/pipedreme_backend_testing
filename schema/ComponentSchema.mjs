@@ -7,7 +7,7 @@ export class ComponentSchema {
         this.description = description; // action.description
         this.component_type = component_type || 'action';
         this.version = version;
-        this.configurable_props = props.map(p => p instanceof Prop ? p : new Prop(p));
+        this.configurable_props = props;//props.map(p => p instanceof PropSchema ? p : new PropSchema(p));
     }
 
     toJSON() {
@@ -17,7 +17,7 @@ export class ComponentSchema {
             description: this.description,
             component_type: this.component_type,
             version: this.version,
-            configurable_props: this.configurable_props.map(p => p.toConfigurable())
+            configurable_props: this.configurable_props//.map(p => p.toConfigurable())
         };
     }
 }

@@ -1,5 +1,5 @@
 import express from 'express';
-import componentController from '../core/ComponentSystem.mjs';
+import componentSystem from '../core/ComponentSystem.mjs';
 import config from '../config.mjs';
 
 const host_url = config.BE_URL;
@@ -10,21 +10,26 @@ const router = express.Router();
 router.get('/actions', async (req, res) => {
     const { app, limit = 50 } = req.query;
 
-    if (!app) {
-        return res.status(400).json({ error: 'app parameter is required' });
-    }
-
     try {
-        // TODO: Implement getAppComponents in ComponentSystem
-        // For now, return empty array
-        const actions = [];
+        let actions = [];
+        
+        if (app) {
+            // Get actions for specific app
+            actions = await componentSystem.getAppActions(app);
+        } else {
+            // Get all actions
+            actions = await componentSystem.getAllActions();
+        }
+        
+        // Apply limit
+        const limitedActions = actions.slice(0, parseInt(limit));
         
         res.json({
             page_info: {
                 total_count: actions.length,
-                count: actions.length
+                count: limitedActions.length
             },
-            data: actions
+            data: limitedActions
         });
     } catch (error) {
         console.error('Error fetching actions:', error);
@@ -32,9 +37,40 @@ router.get('/actions', async (req, res) => {
     }
 });
 
+// GET /triggers
+router.get('/triggers', async (req, res) => {
+    const { app, limit = 50 } = req.query;
+
+    try {
+        let triggers = [];
+        
+        if (app) {
+            // Get triggers for specific app
+            triggers = await componentSystem.getAppTriggers(app);
+        } else {
+            // Get all triggers
+            triggers = await componentSystem.getAllTriggers();
+        }
+        
+        // Apply limit
+        const limitedTriggers = triggers.slice(0, parseInt(limit));
+        
+        res.json({
+            page_info: {
+                total_count: triggers.length,
+                count: limitedTriggers.length
+            },
+            data: limitedTriggers
+        });
+    } catch (error) {
+        console.error('Error fetching triggers:', error);
+        res.status(500).json({ error: 'Failed to load triggers' });
+    }
+});
+
 router.get('/components/:component_id', async (req, res) => {
     try {
-        const component = await componentController.getComponent(req.params.component_id);
+        const component = await componentSystem.getComponent(req.params.component_id);
         if (component) {
             res.json({ data: component });
         } else {
@@ -59,7 +95,7 @@ router.post('/components/props', async (req, res) => {
             });
         }
 
-        const result = await componentController.getPropOptions(
+        const result = await componentSystem.getPropOptions(
             id,
             prop_name,
             external_user_id,
@@ -92,7 +128,7 @@ router.post('/components/configure', async (req, res) => {
         }
 
         // Get component details and return all props with configured values
-        const component = await componentController.getComponent(id);
+        const component = await componentSystem.getComponent(id);
         if (!component) {
             return res.status(404).json({
                 error: 'Component not found'
@@ -131,7 +167,7 @@ router.post('/actions/run', async (req, res) => {
             });
         }
 
-        const result = await componentController.runComponent(
+        const result = await componentSystem.runComponent(
             id,
             configured_props,
             external_user_id

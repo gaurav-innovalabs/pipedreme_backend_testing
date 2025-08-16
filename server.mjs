@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import { initDB } from './core/database.mjs';
+import componentSystem from './core/ComponentSystem.mjs';
 
 import healthRouter from './routes/health.mjs';
 import appsRouter from './routes/apps.mjs';
@@ -16,6 +17,11 @@ const PROJECT_ID = config.PROJECT_ID;
 
 // Initialize Database
 await initDB();
+
+// Initialize Component System
+console.log('Initializing component system...');
+await componentSystem.init();
+console.log('Component system initialized!');
 
 // Middleware
 app.use(cors());
