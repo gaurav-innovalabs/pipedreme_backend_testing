@@ -40,13 +40,14 @@ async function run() {
     name: slug,
     description: "",
     version: "",
-    img_src: undefined,
+    img_src: null,
     categories: [],
-    definition: undefined,
+    definition: null,
+    custom_fields_json: "[]",
     actions: {},
     sources: {},
     // index: componentKey -> compDefObj
-    componentsIndex: {}
+    componentsIndex: {},
   };
 
   try {
@@ -58,25 +59,21 @@ async function run() {
       pkg = JSON.parse(pkgText);
       appMeta.version = pkg.version || "";
     } catch (e) { /* ignore */ }
-
     if (pkg && pkg.main) {
       try {
         const mainFile = path.join(appPath, pkg.main);
         const appModule = await import(url.pathToFileURL(mainFile));
         appMeta.definition = appModule.default || appModule;
-        if (appMeta.definition.name) appMeta.name = appMeta.definition.name;
-        if (appMeta.definition.description) appMeta.description = appMeta.definition.description;
-      
-        
-        // appMeta.id= appMeta.definition.name;
-        // appMeta.name_slug= appMeta.definition.name;
-        // appMeta.name = appMeta.definition.name;
-        // const meta = appMeta.definition.custom_metadata || {};
-        // appMeta.description= appMeta.definition.description || meta.description ;
-        // appMeta.img_src= meta.img_src;
-        // appMeta.categories= meta.categories || [];
-        // appMeta.custom_fields_json= meta.custom_fields_json || "[]";
-        // appMeta.version= appMeta.definition.version;
+        const meta = pkg.custom_metadata;
+        if (appMeta.definition.name) appMeta.name =appMeta.id=appMeta.slug= appMeta.definition.name;
+        if (pkg.description) appMeta.description = pkg.description;
+        if (pkg.version) appMeta.version = pkg;
+        if (meta != undefined ){
+          appMeta.img_src= meta.img_src;
+          appMeta.categories= meta.categories;
+          appMeta.custom_fields_json= meta.custom_fields_json;
+          appMeta.description= meta.description;
+        }
       } catch (e) {
         // main may import packages — those should resolve because we installed per-app node_modules
         console.warn(`[worker ${slug}] could not import app main:`, e.message);

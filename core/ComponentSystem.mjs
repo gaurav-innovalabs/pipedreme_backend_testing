@@ -79,7 +79,6 @@ export class ComponentSystem {
         if (event === "ready") {
           clearTimeout(timeout);
           const meta = msg.meta;
-          debugger
           this.apps.set(slug, { worker, pending, meta });
           this.workers.set(slug, worker);
           console.log(`[component-system] worker ready for ${slug}`);
