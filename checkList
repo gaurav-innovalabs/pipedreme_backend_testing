@@ -1,11 +1,19 @@
+// perfect check remain
+
 - App's // done
 
-- Components // issue
-- Actions // issue
+- Components // done 
+- Actions // done
     - props
-    - dynamic props
-- Sources // issue [404 Routes not found]
+    - dynamic props // need to check
+- Sources // done
 
-- Run Actions
+- Run Actions // issue
 
-- Connections and Oauth
+- Connections and Oauth // issue
+
+- Accounts get connections and Oauth
+
+- Trigger Testing
+
+// Admin API's

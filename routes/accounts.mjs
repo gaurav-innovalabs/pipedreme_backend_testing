@@ -177,7 +177,7 @@ router.post('/tokens', async (req, res) => {
         });
 
         // Generate a connection token (for frontend auth)
-        const token = `tok_${uuidv4().replace(/-/g, '').substring(0, 24)}`;
+        const token = `ctok_${uuidv4().replace(/-/g, '').substring(0, 24)}`;
         const expires_at = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
         // Store token

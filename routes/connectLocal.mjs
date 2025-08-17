@@ -1,9 +1,7 @@
 import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
-import fs from 'fs/promises';
 import { getDB } from '../core/database.mjs';
-import componentController from '../core/ComponentSystem.mjs';
 import config from '../config.mjs';
 
 const host_url = config.BE_URL;

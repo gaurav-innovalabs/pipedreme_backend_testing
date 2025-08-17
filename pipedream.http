@@ -60,6 +60,7 @@ Content-Type: application/json
 Authorization: Bearer {{auth_token}}
 X-PD-Environment: development
 
+# xx
 ### Run SerpAPI search action (Pipedream v1 API)
 POST {{base_url}}/v1/connect/{{pd_project_id}}/actions/run
 Content-Type: application/json
@@ -89,6 +90,7 @@ X-PD-Environment: development
   "external_user_id": "user-123"
 }
 
+# xx
 ### Get App Connected Accounts with sepcific app account or all by remove last ID from URL - Tested
 GET {{base_url}}/v1/connect/{{pd_project_id}}/accounts/apn_Ogher6Q
 Content-Type: application/json
@@ -109,10 +111,6 @@ DELETE {{base_url}}/v1/connect/{{pd_project_id}}/accounts/apn_Ogher6Q
 Content-Type: application/json
 Authorization: Bearer {{auth_token}}
 X-PD-Environment: development
-
-
-### Delete user
-DELETE {{base_url}}/v1/connect/{{pd_project_id}}/users/user123
 
 ### EXTRA
 
