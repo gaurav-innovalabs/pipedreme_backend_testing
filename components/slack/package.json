@@ -18,5 +18,16 @@
     "@slack/web-api": "^7.9.0",
     "async-retry": "^1.3.3",
     "lodash": "^4.17.21"
+  },
+  "custom_metadata": {
+    "name_slug": "slack",
+    "name": "Slack",
+    "auth_type": "oauth",
+    "description": "Slack is a channel-based messaging platform. With Slack, people can work together more effectively, connect all their software tools and services, and find the information they need to do their best work — all within a secure, enterprise-grade environment.",
+    "img_src": "https://assets.pipedream.net/s.v0/app_OkrhR1/logo/orig",
+    "custom_fields_json": "[]",
+    "categories": [
+      "Communication"
+    ]
   }
 }

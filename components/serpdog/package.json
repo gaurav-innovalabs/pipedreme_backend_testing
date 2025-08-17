@@ -11,5 +11,14 @@
   "author": "Pipedream <support@pipedream.com> (https://pipedream.com/)",
   "publishConfig": {
     "access": "public"
+  },
+  "custom_metadata": {
+    "img_src": "https://assets.pipedream.net/s.v0/app_Rphv6x/logo/orig",
+    "name": "Serpdog",
+    "description": "A dog-themed search engine for your Pipedream workflows.",
+    "categories": [
+      "Web \u0026 App Development"
+    ],
+    "custom_fields_json": "[{\"name\":\"api_key\",\"label\":\"API Key\",\"description\":\"Sign in and copy your API Key from [Account](https://serpdog.com/account-api) tab.\",\"default\":null,\"optional\":null,\"type\":\"password\"}]"
   }
 }
