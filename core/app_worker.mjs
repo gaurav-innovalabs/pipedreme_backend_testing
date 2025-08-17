@@ -37,6 +37,8 @@ function packComponentMeta(comp) {
 async function run() {
   const appMeta = {
     slug,
+    id: slug ,
+    name_slug: slug,
     name: slug,
     description: "",
     version: "",
@@ -65,7 +67,7 @@ async function run() {
         const appModule = await import(url.pathToFileURL(mainFile));
         appMeta.definition = appModule.default || appModule;
         const meta = pkg.custom_metadata;
-        if (appMeta.definition.name) appMeta.name =appMeta.id=appMeta.slug= appMeta.definition.name;
+        if (appMeta.definition.name) appMeta.name = appMeta.id = appMeta.name_slug = appMeta.definition.name;
         if (pkg.description) appMeta.description = pkg.description;
         if (pkg.version) appMeta.version = pkg;
         if (meta != undefined ){

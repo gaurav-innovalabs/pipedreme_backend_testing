@@ -68,6 +68,56 @@ export class ComponentSystem {
     });
 
     const pending = new Map();
+    function   _parse_actions_schema(actions) {
+      // process for configuration_props
+      let configured_props = [];
+      for (const [action_key, action_value] of Object.entries(actions)) {
+        for (const [required_key, value] of Object.entries(action_value.props || {})) {
+          // Case 1: value has propDefinition // reusable code handling
+          if (value?.propDefinition) {
+            let temp_configured_props = null;
+            for (const configured_prop_data of value.propDefinition) {
+              if (typeof configured_prop_data === "string") {
+                // simplest form: ["slack", "conversation"]
+                configured_props.push({
+                  name: required_key,
+                  ...temp_configured_props,
+                });
+                break;
+              } else if (configured_prop_data?.propDefinitions) {
+                // nested propDefinitions object
+                temp_configured_props =
+                  configured_prop_data.propDefinitions?.[required_key];
+                if (temp_configured_props) {
+                  configured_props.push({
+                    name: required_key,
+                    ...temp_configured_props,
+                  });
+                  break;
+                }
+              }
+            }
+          } else {
+            // Case 2: plain prop object, just include
+            configured_props.push({
+              name: required_key,
+              ...value,
+            });
+          }
+        }
+        // remove unnecessary props
+        actions[action_key].props = configured_props.map((prop) => {
+          const cleaned = { ...prop };
+          delete cleaned.methods;
+          delete cleaned.propDefinitions;
+          return cleaned;
+        });
+      }
+      // remove unnecessary information
+  
+      // return actions
+      return actions;
+    }
 
     const ready = new Promise((resolve, reject) => {
       const timeout = setTimeout(() => reject(new Error("worker init timeout")), 20000);
@@ -78,8 +128,10 @@ export class ComponentSystem {
 
         if (event === "ready") {
           clearTimeout(timeout);
-          const meta = msg.meta;
-          this.apps.set(slug, { worker, pending, meta });
+          let meta = msg.meta;
+          meta.actions = _parse_actions_schema(meta.actions);
+          meta.sources = _parse_actions_schema(meta.sources);
+          this.apps.set(slug, { worker, pending, meta});
           this.workers.set(slug, worker);
           console.log(`[component-system] worker ready for ${slug}`);
           resolve(meta);
