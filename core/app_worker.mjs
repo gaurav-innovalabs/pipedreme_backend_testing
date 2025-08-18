@@ -8,11 +8,11 @@ import url from "url";
 const { appPath, slug } = workerData;
 
 function safeClone(obj) {
-return JSON.parse(JSON.stringify(obj));
+  return JSON.parse(JSON.stringify(obj));
 }
 function send(msg) {
 
-    parentPort.postMessage(safeClone(msg));
+  parentPort.postMessage(safeClone(msg));
 }
 
 function wrapError(e) {
@@ -34,10 +34,42 @@ function packComponentMeta(comp) {
   };
 }
 
+/**
+ * Build a runtime app object bound to a per-run context and auth.
+ * IMPORTANT: we create a single runtimeApp object, set runtimeApp.$ and runtimeApp.$auth,
+ * then attach all methods bound to runtimeApp so that methods can call this._makeRequest() etc.
+ */
+function makeRuntimeApp(appDef = {}, context = {}, authData = {}) {
+  // start with a fresh object
+  const runtimeApp = {};
+
+  // copy small metadata fields so components can inspect them if needed
+  const keysToCopy = ["type", "app", "propDefinitions", "name", "description"];
+  for (const k of keysToCopy) {
+    if (appDef[k] !== undefined) runtimeApp[k] = appDef[k];
+  }
+
+  // attach per-run utilities
+  runtimeApp.$ = context.$;
+  runtimeApp.$auth = authData;
+
+  // Now attach methods. We *must* attach all methods to runtimeApp so they can reference each other via this.*
+  if (appDef.methods && typeof appDef.methods === "object") {
+    for (const [mName, fn] of Object.entries(appDef.methods)) {
+      if (typeof fn === "function") {
+        // bind to runtimeApp (so inside fn, this === runtimeApp)
+        runtimeApp[mName] = fn.bind(runtimeApp);
+      }
+    }
+  }
+
+  return runtimeApp;
+}
+
 async function run() {
   const appMeta = {
     slug,
-    id: slug ,
+    id: slug,
     name_slug: slug,
     name: slug,
     description: "",
@@ -49,7 +81,6 @@ async function run() {
     custom_fields_json: "[]",
     actions: {},
     sources: {},
-    // index: componentKey -> compDefObj
     componentsIndex: {},
   };
 
@@ -62,24 +93,28 @@ async function run() {
       pkg = JSON.parse(pkgText);
       appMeta.version = pkg.version || "";
     } catch (e) { /* ignore */ }
+
     if (pkg && pkg.main) {
       try {
         const mainFile = path.join(appPath, pkg.main);
         const appModule = await import(url.pathToFileURL(mainFile));
         appMeta.definition = appModule.default || appModule;
+        // copy optional metadata from package.custom_metadata if present
         const meta = pkg.custom_metadata;
-        if (appMeta.definition.name) appMeta.name = appMeta.id = appMeta.name_slug = appMeta.definition.name;
+        if (appMeta.definition.name) {
+          appMeta.name = appMeta.id = appMeta.name_slug = appMeta.definition.name;
+        }
         if (pkg.description) appMeta.description = pkg.description;
-        if (pkg.version) appMeta.version = pkg;
-        if (meta != undefined ){
-          appMeta.img_src= meta.img_src;
-          appMeta.categories= meta.categories;
-          appMeta.custom_fields_json= meta.custom_fields_json;
-          appMeta.description= meta.description;
-          if(meta.id) appMeta.id= meta.id;
-          if(meta.name_slug) appMeta.name_slug= meta.name_slug;
-          if(meta.name) appMeta.name= meta.name;
-          if(meta.auth_type) appMeta.auth_type= meta.auth_type;
+        if (pkg.version) appMeta.version = pkg.version;
+        if (meta !== undefined) {
+          appMeta.img_src = meta.img_src || appMeta.img_src;
+          appMeta.categories = meta.categories || appMeta.categories;
+          appMeta.custom_fields_json = meta.custom_fields_json || appMeta.custom_fields_json;
+          appMeta.description = meta.description || appMeta.description;
+          if (meta.id) appMeta.id = meta.id;
+          if (meta.name_slug) appMeta.name_slug = meta.name_slug;
+          if (meta.name) appMeta.name = meta.name;
+          if (meta.auth_type) appMeta.auth_type = meta.auth_type;
         }
       } catch (e) {
         // main may import packages — those should resolve because we installed per-app node_modules
@@ -154,7 +189,7 @@ async function run() {
         }
 
         if (op === "propOptions") {
-          const { componentKey, propName, userId, configuredProps, prevContext } = payload;
+          const { componentKey, propName, userId, configuredProps, prevContext, authData = {} } = payload;
           const comp = appMeta.componentsIndex[componentKey];
           if (!comp) {
             send({ id, ok: false, error: "component not found" });
@@ -170,72 +205,114 @@ async function run() {
             return;
           }
 
-          // build context (very similar to runtime)
-          const connectionRow = await new Promise((resolve) => {
-            // worker has no DB access; parent can provide credentials if needed in future.
-            // For now we will not query DB inside worker — parent should pass auth info if needed.
-            resolve(null);
-          });
+          const resultContainer = {};
+          let axiosClient = null;
+          try {
+            const imported = await import("axios");
+            axiosClient = imported.default || imported;
+            axiosClient = axiosClient.create ? axiosClient.create() : axiosClient;
+          } catch (e) {
+            axiosClient = null;
+          }
 
           const context = {
             $: {
-              axios: (await import("axios")).default.create(),
-              auths: {},
-              log: (...args) => { /* optional log */ }
+              axios: axiosClient,
+              auths: { [slug]: authData },
+              log: (...args) => { /* no-op */ },
+              export: (k, v) => { resultContainer[k] = v; }
             },
             prevContext: prevContext || {}
           };
 
-          // If parent passed configuredProps we merge when calling
-          const result = await propDef.options.call({ ...context, ...configuredProps });
-          send({ id, ok: true, result });
+          // call prop option
+          try {
+            const mergedThis = { ...context.$, ...(configuredProps || {}) };
+            const result = await propDef.options.call(mergedThis);
+            send({ id, ok: true, result });
+          } catch (err) {
+            send({ id, ok: false, error: err.message || String(err) });
+          }
           return;
         }
 
         if (op === "runComponent") {
-          const { componentKey, props, userId } = payload;
+          const { componentKey, props = {}, userId, authData = {} } = payload;
           const comp = appMeta.componentsIndex[componentKey];
           if (!comp) {
             send({ id, ok: false, error: "component not found" });
             return;
           }
 
-          // create instance props
+          // create instance and copy props so `this.q` works
           const inst = {};
           for (const [pn] of Object.entries(comp.definition.props || {})) {
             if (props && props[pn] !== undefined) inst[pn] = props[pn];
           }
+          inst.props = { ...(props || {}) };
+          // copy all props to top-level this as convenience
+          Object.assign(inst, inst.props);
 
-          // build execution context (simple)
+          const resultContainer = {};
+
+          // prepare axios for context.$ if possible
+          let axiosClient = null;
+          try {
+            const imported = await import("axios");
+            axiosClient = imported.default || imported;
+            axiosClient = axiosClient.create ? axiosClient.create() : axiosClient;
+          } catch (e) {
+            axiosClient = null;
+          }
+
           const context = {
             $: {
-              axios: (await import("axios")).default.create(),
-              auths: {}, // parent could send auth info in payload in future
+              axios: axiosClient,
+              auths: { [slug]: authData },
               log: (...args) => console.log(`[${componentKey}]`, ...args),
-              export: (k, v) => { context[k] = v; }
+              export: (k, v) => {
+                if (k === "$summary") {
+                  resultContainer.$summary = v;
+                } else {
+                  resultContainer[k] = v;
+                }
+              },
             },
             event: {},
             steps: {},
-            props
+            props: inst.props,
           };
 
-          // attach app methods if provided on app definition
-          if (appMeta.definition && appMeta.definition.methods) {
-            context.$[slug] = {};
-            for (const [mName, fn] of Object.entries(appMeta.definition.methods || {})) {
-              context.$[slug][mName] = fn.bind({ $: context.$, $auth: {} });
+          // Build runtime app correctly (single object with all methods attached)
+          const runtimeApp = makeRuntimeApp(appMeta.definition || {}, context, authData);
+
+          // attach runtime app to instance so component code can call `this.app.*`
+          inst.app = runtimeApp;
+
+          // also copy bound app methods into context.$[slug] to match common patterns
+          if (!context.$[slug]) context.$[slug] = {};
+          if (runtimeApp) {
+            for (const k of Object.keys(runtimeApp)) {
+              if (typeof runtimeApp[k] === "function") {
+                context.$[slug][k] = runtimeApp[k].bind(runtimeApp);
+              }
             }
           }
 
-          // call run
           if (typeof comp.definition.run !== "function") {
             send({ id, ok: false, error: "component has no run()" });
             return;
           }
 
           try {
-            const result = await comp.definition.run.call(inst, context);
-            send({ id, ok: true, result });
+            const runResult = await comp.definition.run.call(inst, context);
+            let finalResult;
+            if (runResult && typeof runResult === "object" && !Array.isArray(runResult)) {
+              finalResult = { ...runResult, ...resultContainer };
+            } else {
+              finalResult = { data: runResult, ...resultContainer };
+            }
+            send({ id, ok: true, result: finalResult });
           } catch (e) {
             send({ id, ok: false, error: e.message || String(e) });
           }

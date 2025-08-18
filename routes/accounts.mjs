@@ -129,7 +129,7 @@ router.get('/accounts/:account_id', async (req, res) => {
 router.delete('/accounts/:account_id', async (req, res) => {
     try {
         const { account_id } = req.params;
-        
+        // TODO remove the component or unauth it if any method
         const result = await new Promise((resolve, reject) => {
             getDB().run('DELETE FROM accounts WHERE id = ?', [account_id], function(err) {
                 if (err) reject(err);
@@ -151,55 +151,6 @@ router.delete('/accounts/:account_id', async (req, res) => {
         console.error('Error deleting account:', error);
         res.status(500).json({
             error: 'Failed to delete account'
-        });
-    }
-});
-
-// POST /tokens - Generate connection tokens for frontend auth
-router.post('/tokens', async (req, res) => {
-    try {
-        const { external_user_id } = req.body;
-
-        if (!external_user_id) {
-            return res.status(400).json({
-                error: 'external_user_id is required'
-            });
-        }
-        
-        // Ensure user exists
-        await new Promise((resolve, reject) => {
-            getDB().run('INSERT OR IGNORE INTO users (external_user_id) VALUES (?)', 
-                [external_user_id], (err) => {
-                    if (err) reject(err);
-                    else resolve();
-                }
-            );
-        });
-
-        // Generate a connection token (for frontend auth)
-        const token = `ctok_${uuidv4().replace(/-/g, '').substring(0, 24)}`;
-        const expires_at = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-
-        // Store token
-        await new Promise((resolve, reject) => {
-            getDB().run('INSERT INTO tokens (token, external_user_id, expires_at) VALUES (?, ?, ?)', 
-                [token, external_user_id, expires_at], (err) => {
-                    if (err) reject(err);
-                    else resolve();
-                }
-            );
-        });
-
-        res.json({
-            token: token,
-            external_user_id: external_user_id,
-            connect_link_url: `${host_url}/_static/connect.html?token=${token}`,
-            expires_at: expires_at
-        });
-    } catch (error) {
-        console.error('Error generating token:', error);
-        res.status(500).json({
-            error: 'Failed to generate token'
         });
     }
 });

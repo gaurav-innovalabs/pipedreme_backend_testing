@@ -1,9 +1,10 @@
 import express from 'express';
+import crypto from "crypto";
 import { getDB } from '../core/database.mjs';
 
 const router = express.Router();
 
-router.get('/', async (req, res) => {
+router.get('/health', async (req, res) => {
     try {
         // Check database connectivity
         const db = getDB();
@@ -32,6 +33,23 @@ router.get('/', async (req, res) => {
             version: '1.0.0'
         });
     }
+});
+// demo oauth token generator for the endpoint, TODO: middleware to validate client credentials
+router.post('/oauth/token', async (req, res) => {
+    const { grant_type, client_id, client_secret } = req.body;
+
+    if (!grant_type || !client_id || !client_secret) {
+        return res.status(400).json({ error: 'grant_type, client_id, and client_secret are required' });
+    }
+
+    // generate a random 32-byte hex token
+    const token = crypto.randomBytes(32).toString('hex');
+
+    res.json({
+        access_token: token,
+        token_type: "bearer",
+        expires_in: 3600
+    });
 });
 
 export default router;

@@ -3,8 +3,10 @@ import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import { getDB } from '../core/database.mjs';
 import config from '../config.mjs';
+import cache from '../core/cache.mjs';
 
 const host_url = config.BE_URL;
+const PROJECT_ID = config.PROJECT_ID;
 const router = express.Router();
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
 const COMPONENTS_ROOT = path.join(__dirname, '..', 'components');
@@ -30,6 +32,19 @@ function maskCredentials(credentials) {
     
     return masked;
 }
+// Helper function to get user by connect token
+async function getUserByConnectToken(token) {
+    // First try to get from cache for faster access
+    const cachedToken = await cache.get(`connect_token:${token}`);
+    if (cachedToken && new Date() < new Date(cachedToken.expires_at)) {
+        return {
+            token,
+            external_user_id: cachedToken.external_user_id,
+            expires_at: cachedToken.expires_at
+        };
+    }
+    throw new Error('Invalid or expired connect token');
+}
 
 // Helper function to load connection config
 async function loadConnectionConfig(appSlug) {
@@ -43,8 +58,54 @@ async function loadConnectionConfig(appSlug) {
     }
 }
 
-// GET /v1/connect/local-project/auth/oauth/:app_slug/start
-router.get('/auth/oauth/:app_slug/start', async (req, res) => {
+
+// POST /tokens - Generate connection tokens for frontend auth
+router.post(`/${PROJECT_ID}/tokens`, async (req, res) => {
+    try {
+        const { external_user_id } = req.body;
+
+        if (!external_user_id) {
+            return res.status(400).json({
+                error: 'external_user_id is required'
+            });
+        }
+
+        // Generate a connection token (for frontend auth)
+        const token = `ctok_${uuidv4().replace(/-/g, '').substring(0, 24)}`;
+        const expires_at = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+        // Store token in cache for quick access
+        await cache.set(`connect_token:${token}`, {
+            external_user_id,
+            expires_at
+        }, 24 * 60 * 60); // 24 hours TTL
+
+        // Store token in database as backup
+        cache.set(
+            `token_db:${token}`,
+            JSON.stringify({
+                token,
+                external_user_id,
+                expires_at
+            })
+        )
+
+        res.json({
+            token: token,
+            external_user_id: external_user_id,
+            connect_link_url: `${host_url}/_static/connect.html?token=${token}`,
+            expires_at: expires_at
+        });
+    } catch (error) {
+        console.error('Error generating token:', error);
+        res.status(500).json({
+            error: 'Failed to generate token'
+        });
+    }
+});
+
+// GET /v1/connect/local-project/auth/oauth/:app_slug/start # to get oauth connection link
+router.get(`/${PROJECT_ID}/auth/oauth/:app_slug/start`, async (req, res) => {
     try {
         const { app_slug } = req.params;
         const { external_user_id, redirect_uri } = req.query;
@@ -67,17 +128,15 @@ router.get('/auth/oauth/:app_slug/start', async (req, res) => {
         const state = `${external_user_id}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
         const expires_at = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 minutes
 
-        // Store OAuth state
-        await new Promise((resolve, reject) => {
-            getDB().run(
-                'INSERT INTO oauth_states (state, app_slug, external_user_id, redirect_uri, expires_at) VALUES (?, ?, ?, ?, ?)',
-                [state, app_slug, external_user_id, redirect_uri, expires_at],
-                (err) => {
-                    if (err) reject(err);
-                    else resolve();
-                }
-            );
-        });
+        // Store OAuth state in cache
+        await cache.set(`oauth_state:${state}`, {
+            app_slug,
+            external_user_id,
+            redirect_uri,
+            created_at: new Date().toISOString(),
+            expires_at
+        }, 10 * 60); // 10 minutes TTL
+
 
         // Generate authorization URL using connection config
         const authResult = connectionConfig.methods.connection_link(external_user_id, redirect_uri);
@@ -95,7 +154,7 @@ router.get('/auth/oauth/:app_slug/start', async (req, res) => {
 });
 
 // GET /v1/connect/local-project/auth/oauth/:app_slug/callback
-router.get('/auth/oauth/:app_slug/callback', async (req, res) => {
+router.post(`/${PROJECT_ID}/auth/oauth/:app_slug/callback`, async (req, res) => {
     try {
         const { app_slug } = req.params;
         const { state, code } = req.query;
@@ -106,17 +165,8 @@ router.get('/auth/oauth/:app_slug/callback', async (req, res) => {
             });
         }
 
-        // Get OAuth state
-        const oauthState = await new Promise((resolve, reject) => {
-            getDB().get(
-                'SELECT * FROM oauth_states WHERE state = ?',
-                [state],
-                (err, row) => {
-                    if (err) reject(err);
-                    else resolve(row);
-                }
-            );
-        });
+        // Get OAuth state from cache
+        const oauthState = await cache.get(`oauth_state:${state}`);
 
         if (!oauthState) {
             return res.status(400).json({
@@ -126,14 +176,9 @@ router.get('/auth/oauth/:app_slug/callback', async (req, res) => {
 
         // Check if state is expired
         if (new Date() > new Date(oauthState.expires_at)) {
-            // Clean up expired state
-            await new Promise((resolve, reject) => {
-                getDB().run('DELETE FROM oauth_states WHERE state = ?', [state], (err) => {
-                    if (err) reject(err);
-                    else resolve();
-                });
-            });
-            
+            // Clean up oauth from cache
+            await cache.del(`oauth_state:${state}`);
+                        
             return res.status(400).json({
                 error: 'OAuth state expired'
             });
@@ -150,24 +195,12 @@ router.get('/auth/oauth/:app_slug/callback', async (req, res) => {
         // Exchange code for tokens using connection config
         const tokens = await connectionConfig.methods.connect_oauth_callback(code, state);
 
-        // Ensure user exists
-        await new Promise((resolve, reject) => {
-            getDB().run(
-                'INSERT OR IGNORE INTO users (external_user_id) VALUES (?)',
-                [oauthState.external_user_id],
-                (err) => {
-                    if (err) reject(err);
-                    else resolve();
-                }
-            );
-        });
-
         // Create account with OAuth tokens
-        const accountId = `apn_${uuidv4().replace(/-/g, '').substring(0, 16)}`;
+        const apn_key = `apn_${uuidv4().replace(/-/g, '').substring(0, 16)}`;
         await new Promise((resolve, reject) => {
             getDB().run(
                 'INSERT INTO accounts (id, app_key, external_user_id, app_slug, credentials_json, auth_type) VALUES (?, ?, ?, ?, ?, ?)',
-                [accountId, accountId, oauthState.external_user_id, app_slug, JSON.stringify(tokens), 'oauth'],
+                [apn_key, apn_key, oauthState.external_user_id, app_slug, JSON.stringify(tokens), 'oauth'],
                 (err) => {
                     if (err) reject(err);
                     else resolve();
@@ -175,19 +208,14 @@ router.get('/auth/oauth/:app_slug/callback', async (req, res) => {
             );
         });
 
-        // Clean up OAuth state
-        await new Promise((resolve, reject) => {
-            getDB().run('DELETE FROM oauth_states WHERE state = ?', [state], (err) => {
-                if (err) reject(err);
-                else resolve();
-            });
-        });
+        // Clean up OAuth state from cache
+        await cache.del(`oauth_state:${state}`);
 
         // Get the created account
         const account = await new Promise((resolve, reject) => {
             getDB().get(
                 'SELECT * FROM accounts WHERE id = ?',
-                [accountId],
+                [apn_key],
                 (err, row) => {
                     if (err) reject(err);
                     else resolve(row);
@@ -211,46 +239,43 @@ router.get('/auth/oauth/:app_slug/callback', async (req, res) => {
     }
 });
 
-// POST /v1/connect/local-project/auth/custom - Handle custom auth (API keys, etc.)
-router.post('/auth/custom', async (req, res) => {
+// POST /v1/connect/accounts - Handle custom auth (API keys, etc.)
+router.post('/accounts', async (req, res) => {
     try {
-        const { app_slug, external_user_id, credentials } = req.body;
+        const { app_slug, cfmap_json, connect_token } = req.body;
         
-        if (!app_slug || !external_user_id || !credentials) {
+        if (!app_slug || !connect_token) {
             return res.status(400).json({
-                error: 'app_slug, external_user_id, and credentials are required'
+                error: 'app_slug and connect_token are required'
             });
         }
 
         // Load connection config
         const connectionConfig = await loadConnectionConfig(app_slug);
-        if (!connectionConfig || connectionConfig.type !== 'custom') {
+        if (!connectionConfig || connectionConfig.type !== 'keys') {
             return res.status(400).json({
                 error: `App ${app_slug} does not support custom authentication`
             });
         }
 
-        // Validate credentials using connection config
-        const validatedCredentials = await connectionConfig.methods.connect(credentials);
+        // fetch external_user for that token
+        const user_token_data = await getUserByConnectToken(connect_token);
+        if (!user_token_data) {
+            return res.status(400).json({
+                error: 'Invalid or expired connect token'
+            });
+        }
+        const external_user_id = user_token_data.external_user_id;
 
-        // Ensure user exists
-        await new Promise((resolve, reject) => {
-            getDB().run(
-                'INSERT OR IGNORE INTO users (external_user_id) VALUES (?)',
-                [external_user_id],
-                (err) => {
-                    if (err) reject(err);
-                    else resolve();
-                }
-            );
-        });
+        // Validate credentials using connection config
+        const validatedCredentials = await connectionConfig.methods.connect(cfmap_json || {});
 
         // Create account with validated credentials
-        const accountId = `apn_${uuidv4().replace(/-/g, '').substring(0, 16)}`;
+        const apn_key = `apn_${uuidv4().replace(/-/g, '').substring(0, 16)}`;
         await new Promise((resolve, reject) => {
             getDB().run(
                 'INSERT INTO accounts (id, app_key, external_user_id, app_slug, credentials_json, auth_type) VALUES (?, ?, ?, ?, ?, ?)',
-                [accountId, accountId, external_user_id, app_slug, JSON.stringify(validatedCredentials), 'custom'],
+                [apn_key, apn_key, external_user_id, app_slug, JSON.stringify(validatedCredentials), 'keys'],
                 (err) => {
                     if (err) reject(err);
                     else resolve();
@@ -262,7 +287,7 @@ router.post('/auth/custom', async (req, res) => {
         const account = await new Promise((resolve, reject) => {
             getDB().get(
                 'SELECT * FROM accounts WHERE id = ?',
-                [accountId],
+                [apn_key],
                 (err, row) => {
                     if (err) reject(err);
                     else resolve(row);

@@ -46,9 +46,7 @@ export class ComponentSystem {
     try {
       const pkgText = await fs.readFile(pkgPath, "utf8");
       pkg = JSON.parse(pkgText);
-    } catch {
-      // no package.json is ok
-    }
+    } catch { /* ignore */ }
 
     if (pkg && (pkg.dependencies || pkg.peerDependencies)) {
       console.log(`[component-system] Installing deps for ${slug}...`);
@@ -232,10 +230,10 @@ export class ComponentSystem {
     return null;
   }
 
-  async getPropOptions(componentKey, propName, userId, configuredProps = {}, prevContext = {}) {
+  async getPropOptions(componentKey, propName, userId, configuredProps = {}, prevContext = {}, authData = {}) {
     const entry = [...this.apps.values()].find(e => e.meta?.componentsIndex?.[componentKey]);
     if (!entry) throw new Error("component not found");
-    return this._rpc(entry.worker, entry.pending, "propOptions", { componentKey, propName, userId, configuredProps, prevContext });
+    return this._rpc(entry.worker, entry.pending, "propOptions", { componentKey, propName, userId, configuredProps, prevContext, authData });
   }
 
   async runComponent(componentKey, props = {}, userId, authData = {}) {

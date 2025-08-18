@@ -33,10 +33,10 @@ app.use((req, res, next) => {
 });
 
 // Routes
-app.use('/health', healthRouter);
+app.use('/v1', healthRouter);
 app.use('/v1/apps', appsRouter);
 app.use(`/v1/connect/${PROJECT_ID}`, componentsRouter);
-app.use(`/v1/connect/${PROJECT_ID}`, connectLocalRouter);
+app.use(`/v1/connect`, connectLocalRouter);
 app.use(`/v1/connect/${PROJECT_ID}`, accountsRouter);
 // app.use(`/v1/connect/${PROJECT_ID}`, triggerRouter);
 
@@ -47,5 +47,5 @@ app.use((err, req, res, next) => {
 });
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
-    console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+    console.log(`🔗 Health check: http://localhost:${PORT}/v1/health`);
 });

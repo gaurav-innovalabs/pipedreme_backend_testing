@@ -20,12 +20,6 @@ export async function initDB() {
             
             // Create all required tables
             const createTables = [
-                // Users table
-                `CREATE TABLE IF NOT EXISTS users (
-                    external_user_id TEXT PRIMARY KEY,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                )`,
                 
                 // Apps/Accounts table (for authentication)
                 `CREATE TABLE IF NOT EXISTS accounts (
@@ -40,15 +34,6 @@ export async function initDB() {
                     FOREIGN KEY (external_user_id) REFERENCES users(external_user_id) ON DELETE CASCADE
                 )`,
                 
-                // OAuth states for temporary storage during OAuth flow
-                `CREATE TABLE IF NOT EXISTS oauth_states (
-                    state TEXT PRIMARY KEY,
-                    app_slug TEXT NOT NULL,
-                    external_user_id TEXT NOT NULL,
-                    redirect_uri TEXT,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    expires_at DATETIME NOT NULL
-                )`,
                 
                 // Component runs history
                 `CREATE TABLE IF NOT EXISTS runs (
@@ -65,14 +50,6 @@ export async function initDB() {
                     FOREIGN KEY (external_user_id) REFERENCES users(external_user_id) ON DELETE CASCADE
                 )`,
                 
-                // Connection tokens for frontend auth
-                `CREATE TABLE IF NOT EXISTS tokens (
-                    token TEXT PRIMARY KEY,
-                    external_user_id TEXT NOT NULL,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    expires_at DATETIME NOT NULL,
-                    FOREIGN KEY (external_user_id) REFERENCES users(external_user_id) ON DELETE CASCADE
-                )`
             ];
             
             let completed = 0;

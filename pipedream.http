@@ -92,10 +92,10 @@ X-PD-Environment: development
 
 {
   "external_user_id": "user123",
-  "id": "hello_world",
+  "id": "serpapi-scrape-search",
   "configured_props": {
     "serpapi": {
-      "authProvisionId": "auth_123"
+      "authProvisionId": "apn_key_123"
     },
     "q": "coffee shops near me",
     "engine": "google",
