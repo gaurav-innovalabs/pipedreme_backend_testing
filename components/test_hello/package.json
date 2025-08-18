@@ -1,13 +1,13 @@
 {
-  "name": "@pipedream/serpapi",
+  "name": "@pipedream/test_hello",
   "version": "0.1.2",
-  "description": "Pipedream SerpApi Components",
-  "main": "serpapi.app.mjs",
+  "description": "Pipedream test_hello Components",
+  "main": "test_hello.app.mjs",
   "keywords": [
     "pipedream",
-    "serpapi"
+    "test_hello"
   ],
-  "homepage": "https://pipedream.com/apps/serpapi",
+  "homepage": "https://pipedream.com/apps/test_hello",
   "author": "Pipedream <support@pipedream.com> (https://pipedream.com/)",
   "publishConfig": {
     "access": "public"
@@ -16,11 +16,8 @@
     "@pipedream/platform": "^3.0.3"
   },
   "custom_metadata": {
-    "id": "app_Rphv6x",
-    "name_slug": "serpapi",
-    "auth_type": "keys",
     "img_src": "https://assets.pipedream.net/s.v0/app_Rphv6x/logo/orig",
-    "name": "SerpApi",
+    "name": "Test Hello",
     "description": "Scrape Google and other search engines from our fast, easy, and complete API.",
     "categories": [
       "Web \u0026 App Development"

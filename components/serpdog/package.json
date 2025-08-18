@@ -13,12 +13,15 @@
     "access": "public"
   },
   "custom_metadata": {
-    "img_src": "https://assets.pipedream.net/s.v0/app_Rphv6x/logo/orig",
+    "id": "app_1NohY8",
+    "name_slug": "serpdog",
     "name": "Serpdog",
-    "description": "A dog-themed search engine for your Pipedream workflows.",
+    "auth_type": "keys",
+    "description": "Google Search API that allows you to access Google Search Results in real time. It solves the problem of proxies and captchas for a smooth scraping journey.",
+    "img_src": "https://assets.pipedream.net/s.v0/app_1NohY8/logo/orig",
     "categories": [
       "Web \u0026 App Development"
     ],
-    "custom_fields_json": "[{\"name\":\"api_key\",\"label\":\"API Key\",\"description\":\"Sign in and copy your API Key from [Account](https://serpdog.com/account-api) tab.\",\"default\":null,\"optional\":null,\"type\":\"password\"}]"
+    "custom_fields_json": "[{\"name\":\"api_key\",\"label\":\"API Key\",\"description\":\"Sign in and copy your API key directly from your dashboard.\",\"default\":null,\"optional\":null,\"type\":\"password\"}]",
   }
 }
