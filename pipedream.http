@@ -1,9 +1,9 @@
 @client_secret = ...
 @client_id = ...
+@pd_project_id = proj_zNsg4Me
 
 # @base_url = https://api.pipedream.com
 @base_url = http://localhost:3000
-@pd_project_id = proj_zNsg4Me
 
 ### Get OAuth token
 # @name getToken
@@ -24,8 +24,10 @@ GET {{base_url}}/v1/apps
 Authorization: Bearer {{auth_token}}
 
 
-# @app_slug = serpapi
-@app_slug = slack
+@app_slug = serpapi
+# @app_slug = test_hello
+# @app_slug = serpdog
+# @app_slug = slack
 
 ### List apps with search query
 GET {{base_url}}/v1/apps?q={{app_slug}}&limit=10
@@ -69,13 +71,35 @@ X-PD-Environment: development
 
 {
   "external_user_id": "user123",
-  "id": "scrape-search-scrape-search",
+  "id": "hello_world",
   "configured_props": {
     "serpapi": {
       "authProvisionId": "auth_123"
     },
     "q": "coffee shops near me",
     "engine": "google",
+    "name": "google",
+    "location": "Austin, Texas"
+  }
+}
+
+#### Run SerpDog search action (Pipedream v1 API)
+
+POST {{base_url}}/v1/connect/{{pd_project_id}}/actions/run
+Content-Type: application/json
+Authorization: Bearer {{auth_token}}
+X-PD-Environment: development
+
+{
+  "external_user_id": "user123",
+  "id": "hello_world",
+  "configured_props": {
+    "serpapi": {
+      "authProvisionId": "auth_123"
+    },
+    "q": "coffee shops near me",
+    "engine": "google",
+    "name": "google",
     "location": "Austin, Texas"
   }
 }
@@ -90,6 +114,30 @@ X-PD-Environment: development
   "external_user_id": "user-123"
 }
 
+### for "keys" type auth creation
+POST {{base_url}}/v1/connect/accounts
+Content-Type: application/json
+Authorization: Bearer {{auth_token}}
+X-PD-Environment: development
+
+{
+  "app_slug": "slack",
+  "cfmap_json": "{\"api_key\": \"your_api_key_here\"}",
+  "connect_token": "ctok_your_connect_token_here"
+}
+### 
+
+GET {{base_url}}/v1/connect/accounts?app={{app_slug}}&externalUserId=user123
+Content-Type: application/json
+Authorization: Bearer {{auth_token}}
+X-PD-Environment: development
+
+{
+  
+}
+
+## data: [{id: apn_..., name: .. ,updated_at: , created_at: .. ,healthy: true, external_id: .. , app: ..}] , page_info: []
+
 # xx
 ### Get App Connected Accounts with sepcific app account or all by remove last ID from URL - Tested
 GET {{base_url}}/v1/connect/{{pd_project_id}}/accounts/apn_Ogher6Q
@@ -102,6 +150,7 @@ X-PD-Environment: development
   "app": "slack",
   "include_credentials": true
 }
+####
 
 GET {{base_url}}/v1/connect/{{pd_project_id}}/accounts?app={{app_slug}}&external_user_id=user123
 // is required params??

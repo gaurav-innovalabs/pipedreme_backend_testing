@@ -1,6 +1,7 @@
 import express from 'express';
 import componentSystem from '../core/ComponentSystem.mjs';
 import config from '../config.mjs';
+import { dbGet } from '../core/database.mjs';
 
 const host_url = config.BE_URL;
 // /v1/connect/local-project
@@ -167,21 +168,72 @@ router.post('/actions/run', async (req, res) => {
             });
         }
 
+        // Get component info to determine app_slug
+        const component = await componentSystem.getComponent(id);
+        if (!component) {
+            return res.status(404).json({
+                ret: null,
+                exports: {
+                    debug: {
+                        data: {
+                            errorMessages: [`Component ${id} not found`]
+                        }
+                    }
+                },
+                os: []
+            });
+        }
+
+        // Load auth credentials for this user and app
+        let authData = {};
+        try {
+            const authRow = await dbGet(
+                'SELECT credentials_json, auth_type FROM accounts WHERE external_user_id = ? AND app_slug = ?',
+                [external_user_id, component.app_slug]
+            );
+            // TODO: fetch apn_id.. then process accordingly
+            if (authRow) {
+                try {
+                    authData = JSON.parse(authRow.credentials_json);
+                } catch (e) {
+                    console.warn(`Invalid credentials JSON for user ${external_user_id} app ${component.app_slug}`);
+                }
+            }
+        } catch (dbError) {
+            console.warn('Failed to load auth data:', dbError.message);
+            // Continue without auth data - some components might not need it
+        }
+        // const authData = {}
         const result = await componentSystem.runComponent(
             id,
             configured_props,
-            external_user_id
+            external_user_id,
+            authData
         );
         
-        res.json({
-            run_id: `run_${Date.now()}`,
-            status: 'succeeded',
-            output: result
-        });
+        // If result has the new format, use it directly
+        if (result && typeof result === 'object' && 'ret' in result) {
+            res.json(result);
+        } else {
+            // Legacy format compatibility
+            res.json({
+                ret: result,
+                exports: {},
+                os: []
+            });
+        }
     } catch (error) {
         console.error('Error running component:', error);
-        res.status(500).json({ 
-            error: error.message || 'Failed to run component'
+        res.status(500).json({
+            ret: null,
+            exports: error.exports || {
+                debug: {
+                    data: {
+                        errorMessages: [error.message || 'Failed to run component']
+                    }
+                }
+            },
+            os: error.os || []
         });
     }
 });

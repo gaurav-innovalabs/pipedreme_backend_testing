@@ -124,7 +124,17 @@ export class ComponentSystem {
           const p = pending.get(id);
           if (!p) return;
           pending.delete(id);
-          ok ? p.resolve(result) : p.reject(new Error(error || "worker error"));
+          if (ok) {
+            p.resolve(result);
+          } else {
+            // Handle error with proper structure for Pipedream compatibility
+            const err = new Error(error || "worker error");
+            if (msg.exports || msg.os) {
+              err.exports = msg.exports;
+              err.os = msg.os;
+            }
+            p.reject(err);
+          }
         }
       });
 
@@ -228,10 +238,10 @@ export class ComponentSystem {
     return this._rpc(entry.worker, entry.pending, "propOptions", { componentKey, propName, userId, configuredProps, prevContext });
   }
 
-  async runComponent(componentKey, props = {}, userId) {
-    const entry = [...this.apps.values()].find(e => e.meta?.componentsIndex?.[componentKey]);
+  async runComponent(componentKey, props = {}, userId, authData = {}) {
+    const entry = [...this.apps.values()].find(e => e.meta?.actions?.[componentKey]);
     if (!entry) throw new Error("component not found");
-    return this._rpc(entry.worker, entry.pending, "runComponent", { componentKey, props, userId });
+    return this._rpc(entry.worker, entry.pending, "runComponent", { componentKey, props, userId, authData });
   }
 
   async registerNewApp(slug) {
