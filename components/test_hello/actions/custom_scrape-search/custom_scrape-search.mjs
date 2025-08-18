@@ -1,36 +1,17 @@
 import app from "../../test_hello.app.mjs";
 
 export default {
-  key: "serpapi-scrape-search",
+  key: "custom_serpapi-scrape-search",
   name: "Scrape Search",
   description: "Scrape the results from a search engine via SerpApi service. [See the documentation](https://serpapi.com/search-api)",
   version: "0.0.3",
   type: "action",
   props: {
-    app,
-    engine: {
-      propDefinition: [
-        app,
-        "engine",
-      ],
-    },
     q: {
-      propDefinition: [
-        app,
-        "q",
-      ],
-    },
-    device: {
-      propDefinition: [
-        app,
-        "device",
-      ],
-    },
-    noCache: {
-      propDefinition: [
-        app,
-        "noCache",
-      ],
+      type: "string",
+      label: "query to search",
+      optional: true,
+      default: "weather of indore",
     },
   },
   async run({ $ }) {

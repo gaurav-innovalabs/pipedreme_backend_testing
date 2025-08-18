@@ -22,6 +22,6 @@
     "categories": [
       "Web \u0026 App Development"
     ],
-    "custom_fields_json": "[{\"name\":\"api_key\",\"label\":\"API Key\",\"description\":\"Sign in and copy your API key directly from your dashboard.\",\"default\":null,\"optional\":null,\"type\":\"password\"}]",
+    "custom_fields_json": "[{\"name\":\"api_key\",\"label\":\"API Key\",\"description\":\"Sign in and copy your API key directly from your dashboard.\",\"default\":null,\"optional\":null,\"type\":\"password\"}]"
   }
 }
