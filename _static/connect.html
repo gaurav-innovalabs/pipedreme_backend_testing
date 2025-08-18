@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connect App - Pipedream</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            width: 100%;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .header {
+            padding: 10px 24px 0;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+        }
+
+        .logos {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+        }
+
+        .logo-primary {
+            background: #00d4aa;
+        }
+
+        .logo-secondary {
+            background: #6366f1;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #6b7280;
+            padding: 4px;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .close-btn:hover {
+            background: #f3f4f6;
+            color: #374151;
+        }
+
+        .content {
+            padding: 8px 24px;
+        }
+
+        .title {
+            font-size: 22px;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 6px;
+        }
+
+        .subtitle {
+            color: #6b7280;
+            margin-bottom: 20px;
+        }
+
+        .app-info {
+            background: #f9fafb;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .app-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 12px;
+        }
+
+        .app-logo {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            object-fit: cover;
+        }
+
+        .app-details {
+            flex-grow: 1;
+        }
+
+        .app-name {
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 4px;
+        }
+
+        .app-description {
+            color: #6b7280;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .app-categories {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .category-tag {
+            background: #e0e7ff;
+            color: #4f46e5;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .custom-fields h4 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 12px;
+        }
+
+        .field-item {
+            margin-bottom: 12px;
+        }
+
+        .field-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 4px;
+        }
+
+        .field-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #111827;
+            margin-bottom: 4px;
+        }
+
+        .field-description {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+
+        .field-description a {
+            color: #6366f1;
+            text-decoration: none;
+        }
+
+        .field-description a:hover {
+            text-decoration: underline;
+        }
+
+        .custom-fields {
+            border-top: 1px solid #e5e7eb;
+            padding-top: 12px;
+            margin-top: 12px;
+        }
+
+        .oauth-info {
+            border-top: 1px solid #e5e7eb;
+            padding-top: 12px;
+            margin-top: 12px;
+            text-align: center;
+        }
+
+        .oauth-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+        }
+
+        .oauth-info h4 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 8px;
+        }
+
+        .oauth-info p {
+            color: #6b7280;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .features {
+            margin-bottom: 24px;
+        }
+
+        .feature {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .feature-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f3f4f6;
+            color: #374151;
+            flex-shrink: 0;
+        }
+
+        .feature-content h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 4px;
+        }
+
+        .feature-content p {
+            color: #6b7280;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .continue-btn {
+            width: 100%;
+            background: #6366f1;
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 12px;
+        }
+
+        .continue-btn:hover:not(:disabled) {
+            background: #5855eb;
+            transform: translateY(-1px);
+        }
+
+        .continue-btn:disabled {
+            background: #d1d5db;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .terms {
+            text-align: center;
+            font-size: 12px;
+            color: #6b7280;
+            line-height: 1.5;
+        }
+
+        .terms a {
+            color: #6366f1;
+            text-decoration: none;
+        }
+
+        .terms a:hover {
+            text-decoration: underline;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 16px;
+            color: #9ca3af;
+            font-size: 14px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+
+        .success {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #16a34a;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="modal">
+            <div class="header">
+                <button class="close-btn" @click="closeModal">&times;</button>
+            </div>
+            
+            <div class="content">
+                <h1 class="title">We use Pipedream to connect your account</h1>
+                <p class="subtitle">Connect your {{ appName }} account securely and instantly</p>
+                
+                <!-- Step 1: Basic UI with features -->
+                <div v-if="!showAppDetails" class="features">
+                    <div class="feature">
+                        <div class="feature-icon">⚡</div>
+                        <div class="feature-content">
+                            <h3>Connect instantly</h3>
+                            <p>Pipedream lets you securely connect your account in seconds.</p>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">🔒</div>
+                        <div class="feature-content">
+                            <h3>Connect securely</h3>
+                            <p>More than a million developers trust Pipedream to keep their data safe.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: App details and custom fields -->
+                <div v-if="showAppDetails && appInfo" class="app-info">
+                    <div class="app-header">
+                        <img v-if="appInfo.img_src" :src="appInfo.img_src" :alt="appInfo.name" class="app-logo">
+                        <div class="app-details">
+                            <div class="app-name">{{ appInfo.name || appName }}</div>
+                            <div class="app-description">{{ appInfo.description || 'Connect your account to get started' }}</div>
+                            <div v-if="appInfo.categories && appInfo.categories.length" class="app-categories">
+                                <span v-for="category in appInfo.categories" :key="category" class="category-tag">
+                                    {{ category }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Show custom fields only for "keys" auth type -->
+                    <div v-if="appInfo.auth_type === 'keys' && appInfo.customFields && appInfo.customFields.length" class="custom-fields">
+                        <h4>Connection Details</h4>
+                        <div v-for="field in appInfo.customFields" :key="field.name" class="field-item">
+                            <label class="field-label">{{ field.label }}</label>
+                            <input 
+                                v-if="field.type === 'password'" 
+                                type="password" 
+                                :placeholder="field.label"
+                                class="field-input"
+                                v-model="fieldValues[field.name]"
+                            >
+                            <input 
+                                v-else 
+                                type="text" 
+                                :placeholder="field.label"
+                                class="field-input"
+                                v-model="fieldValues[field.name]"
+                            >
+                            <p v-if="field.description" class="field-description" v-html="field.description"></p>
+                        </div>
+                    </div>
+
+                    <!-- Show OAuth message for OAuth auth type -->
+                    <div v-if="appInfo.auth_type === 'oauth'" class="oauth-info">
+                        <div class="oauth-icon">🔐</div>
+                        <h4>OAuth Authentication</h4>
+                        <p>This app uses OAuth for secure authentication. You'll be redirected to authorize the connection.</p>
+                    </div>
+                </div>
+
+                <div v-if="error" class="error">
+                    {{ error }}
+                </div>
+
+                <div v-if="success" class="success">
+                    {{ success }}
+                </div>
+
+                <button 
+                    class="continue-btn" 
+                    @click="handleContinue"
+                    :disabled="isLoading || !token"
+                >
+                    <span v-if="isLoading" class="loading"></span>
+                    {{ getContinueButtonText() }}
+                </button>
+
+                <div class="terms">
+                    By continuing, you agree to Pipedream's 
+                    <a href="#" @click.prevent="openTerms">Terms of Service</a> and 
+                    <a href="#" @click.prevent="openPrivacy">Privacy Policy</a>.
+                </div>
+            </div>
+
+            <div class="footer">
+                pipedream
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    token: null,
+                    app: null,
+                    appInfo: null,
+                    isLoading: false,
+                    error: null,
+                    success: null,
+                    fieldValues: {},
+                    showAppDetails: false 
+                };
+            },
+            computed: {
+                appName() {
+                    if (!this.app) return 'App';
+                    return this.app.charAt(0).toUpperCase() + this.app.slice(1);
+                }
+            },
+            mounted() {
+                this.parseUrlParams();
+            },
+            methods: {
+                parseUrlParams() {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    this.token = urlParams.get('token');
+                    this.app = urlParams.get('app');
+                    
+                    if (!this.token) {
+                        this.error = 'No connection token provided';
+                    }
+                },
+                
+                async loadAppInfo() {
+                    if (!this.app) {
+                        console.log('No app specified');
+                        return;
+                    }
+                    
+                    console.log('Loading app info for:', this.app);
+                    
+                    try {
+                        // Fetch real app data from the API
+                        const response = await axios.get(`http://localhost:3000/v1/apps/${this.app}`);
+                        console.log('API response:', response.data);
+                        
+                        if (response.data && response.data.data) {
+                            this.appInfo = response.data.data;
+                            
+                            // Parse custom fields if they exist
+                            if (this.appInfo.custom_fields_json) {
+                                try {
+                                    this.appInfo.customFields = JSON.parse(this.appInfo.custom_fields_json);
+                                    console.log('Parsed custom fields:', this.appInfo.customFields);
+                                } catch (e) {
+                                    console.warn('Failed to parse custom fields:', e);
+                                    this.appInfo.customFields = [];
+                                }
+                            }
+                            
+                            // Ensure auth_type is set (default to 'keys' if not specified)
+                            if (!this.appInfo.auth_type) {
+                                this.appInfo.auth_type = 'keys';
+                            }
+                            
+                            console.log('App info loaded successfully:', this.appInfo);
+                        } else {
+                            console.warn('No data in API response');
+                        }
+                    } catch (err) {
+                        console.error('Error loading app info:', err);
+                        // Fallback to placeholder data
+                        this.appInfo = {
+                            name: this.appName,
+                            description: `Connect your ${this.appName} account to start automating workflows.`,
+                            auth_type: 'keys'
+                        };
+                    }
+                },
+                
+                async handleContinue() {
+                    console.log('Continue button clicked');
+                    console.log('Current state:', { 
+                        token: this.token, 
+                        app: this.app, 
+                        showAppDetails: this.showAppDetails,
+                        appInfo: this.appInfo 
+                    });
+                    
+                    if (!this.token) {
+                        this.error = 'No connection token provided';
+                        return;
+                    }
+                    
+                    // Step 1: If we haven't shown app details yet, fetch them first
+                    if (!this.showAppDetails) {
+                        console.log('First continue click - loading app info...');
+                        this.isLoading = true;
+                        this.error = null;
+                        
+                        try {
+                            await this.loadAppInfo();
+                            this.showAppDetails = true;
+                            console.log('App details loaded, showAppDetails set to:', this.showAppDetails);
+                        } catch (err) {
+                            this.error = 'Failed to load app information. Please try again.';
+                            console.error('Error loading app info:', err);
+                        } finally {
+                            this.isLoading = false;
+                        }
+                        return;
+                    }
+                    
+                    console.log('Second continue click - handling connection...');
+                    
+                    // Step 2: Handle the actual connection based on auth type
+                    if (this.appInfo.auth_type === 'keys') {
+                        // Validate required custom fields for keys auth
+                        if (this.appInfo.customFields && this.appInfo.customFields.length) {
+                            const missingFields = this.appInfo.customFields.filter(field => 
+                                !this.fieldValues[field.name] || this.fieldValues[field.name].trim() === ''
+                            );
+                            
+                            if (missingFields.length > 0) {
+                                this.error = `Please fill in all required fields: ${missingFields.map(f => f.label).join(', ')}`;
+                                return;
+                            }
+                        }
+                    }
+                    
+                    this.isLoading = true;
+                    this.error = null;
+                    
+                    try {
+                        if (this.appInfo.auth_type === 'oauth') {
+                            // Handle OAuth flow
+                            this.success = `Redirecting to ${this.appInfo.name || this.appName} for OAuth authorization...`;
+                            
+                            // Here you would typically redirect to the OAuth URL
+                            // For demo purposes, we'll simulate the OAuth flow
+                            await new Promise(resolve => setTimeout(resolve, 2000));
+                            
+                            this.success = `Successfully connected to ${this.appInfo.name || this.appName} via OAuth!`;
+                        } else {
+                            // Handle keys auth - call the accounts API
+                            this.success = `Connecting to ${this.appInfo.name || this.appName} with provided credentials...`;
+                            
+                            // Prepare the cfmap_json with field values
+                            const cfmap = {};
+                            if (this.appInfo.customFields && this.appInfo.customFields.length) {
+                                this.appInfo.customFields.forEach(field => {
+                                    cfmap[field.name] = this.fieldValues[field.name];
+                                });
+                            }
+                            
+                            // Call the accounts API
+                            const accountsResponse = await axios.post(`http://localhost:3000/v1/connect/accounts`, {
+                                app_slug: this.app,
+                                cfmap_json: JSON.stringify(cfmap),
+                                connect_token: this.token
+                            });
+                            
+                            console.log('Accounts API response:', accountsResponse.data);
+                            
+                            if (accountsResponse.data.success || accountsResponse.data.id) {
+                                this.success = `Successfully connected to ${this.appInfo.name || this.appName}!`;
+                            } else {
+                                throw new Error('Failed to create account connection');
+                            }
+                        }
+                        
+                        // You can redirect to a success page or close the modal
+                        setTimeout(() => {
+                            this.closeModal();
+                        }, 2000);
+                        
+                    } catch (err) {
+                        this.error = 'Failed to connect. Please try again.';
+                        console.error('Connection error:', err);
+                        if (err.response) {
+                            console.error('API Error:', err.response.data);
+                            this.error = `Connection failed: ${err.response.data.error || 'Unknown error'}`;
+                        }
+                    } finally {
+                        this.isLoading = false;
+                    }
+                },
+                
+                closeModal() {
+                    // Close the modal or redirect
+                    window.close();
+                    // Alternative: redirect to a different page
+                    // window.location.href = '/success';
+                },
+                
+                openTerms() {
+                    window.open('https://pipedream.com/terms', '_blank');
+                },
+                
+                openPrivacy() {
+                    window.open('https://pipedream.com/privacy', '_blank');
+                },
+
+                getContinueButtonText() {
+                    if (this.isLoading) {
+                        return 'Connecting...';
+                    }
+                    if (this.showAppDetails) {
+                        if (this.appInfo && this.appInfo.auth_type === 'oauth') {
+                            return 'Authorize with OAuth';
+                        }
+                        return 'Connect Account';
+                    }
+                    return 'Get Started';
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

@@ -26,11 +26,18 @@ console.log('Component system initialized!');
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Serve static files from _static directory
+app.use('/_static', express.static('_static'));
+
 // Logging
 app.use((req, res, next) => {
     console.log(`${new Date().toISOString()} ${req.method} ${req.path} ${res.statusCode} ${res.data}`);
     next();
 });
+
+// Serve static files from _static directory
+app.use('/_static', express.static('_static'));
 
 // Routes
 app.use('/v1', healthRouter);
