@@ -44,6 +44,7 @@ async function run() {
     version: "",
     img_src: null,
     categories: [],
+    auth_type: "none",
     definition: null,
     custom_fields_json: "[]",
     actions: {},
@@ -75,6 +76,10 @@ async function run() {
           appMeta.categories= meta.categories;
           appMeta.custom_fields_json= meta.custom_fields_json;
           appMeta.description= meta.description;
+          if(meta.id) appMeta.id= meta.id;
+          if(meta.name_slug) appMeta.name_slug= meta.name_slug;
+          if(meta.name) appMeta.name= meta.name;
+          if(meta.auth_type) appMeta.auth_type= meta.auth_type;
         }
       } catch (e) {
         // main may import packages — those should resolve because we installed per-app node_modules

@@ -1,5 +1,5 @@
 export class AppSchema {
-    constructor({ id, name_slug, name, auth_type, description, img_src, categories, pkg_metadata, custom_fields_json}) {
+    constructor({ id, name_slug, name, auth_type, description, img_src, categories, custom_fields_json}) {
         this.id = id;
         this.name_slug = name_slug;
         this.name = name;
@@ -7,7 +7,6 @@ export class AppSchema {
         this.description = description || "";
         this.img_src = img_src || null;
         this.categories = categories || [];
-        this.pkg_metadata = pkg_metadata || {};
         this.custom_fields_json = custom_fields_json || "[]";
     }
 
