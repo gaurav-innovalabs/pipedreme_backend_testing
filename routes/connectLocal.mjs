@@ -4,6 +4,7 @@ import path from 'path';
 import { getDB } from '../core/database.mjs';
 import config from '../config.mjs';
 import cache from '../core/cache.mjs';
+import componentSystem from '../core/ComponentSystem.mjs';
 
 const host_url = config.BE_URL;
 const PROJECT_ID = config.PROJECT_ID;
@@ -35,8 +36,9 @@ function maskCredentials(credentials) {
 // Helper function to get user by connect token
 async function getUserByConnectToken(token) {
     // First try to get from cache for faster access
-    const cachedToken = await cache.get(`connect_token:${token}`);
-    if (cachedToken && new Date() < new Date(cachedToken.expires_at)) {
+    let cachedToken = await cache.get(`connect_token:${token}`);
+    if (cachedToken) {
+        cachedToken = JSON.parse(cachedToken);
         return {
             token,
             external_user_id: cachedToken.external_user_id,
@@ -74,20 +76,15 @@ router.post(`/${PROJECT_ID}/tokens`, async (req, res) => {
         const token = `ctok_${uuidv4().replace(/-/g, '').substring(0, 24)}`;
         const expires_at = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
-        // Store token in cache for quick access
-        await cache.set(`connect_token:${token}`, {
-            external_user_id,
-            expires_at
-        }, 24 * 60 * 60); // 24 hours TTL
-
         // Store token in database as backup
         cache.set(
-            `token_db:${token}`,
+            `connect_token:${token}`,
             JSON.stringify({
                 token,
                 external_user_id,
                 expires_at
-            })
+            }),
+            'EX', 20 * 60 // 20 minutes TTL 
         )
 
         res.json({
@@ -108,11 +105,11 @@ router.post(`/${PROJECT_ID}/tokens`, async (req, res) => {
 router.get(`/${PROJECT_ID}/auth/oauth/:app_slug/start`, async (req, res) => {
     try {
         const { app_slug } = req.params;
-        const { external_user_id, redirect_uri } = req.query;
-
-        if (!external_user_id || !redirect_uri) {
+        const { external_user_id } = req.query;
+        const redirect_uri = `${host_url}/v1/connect/${PROJECT_ID}/auth/oauth/${app_slug}/callback`;
+        if (!external_user_id) {
             return res.status(400).json({
-                error: 'external_user_id and redirect_uri are required'
+                error: 'external_user_id are required'
             });
         }
 
@@ -135,7 +132,7 @@ router.get(`/${PROJECT_ID}/auth/oauth/:app_slug/start`, async (req, res) => {
             redirect_uri,
             created_at: new Date().toISOString(),
             expires_at
-        }, 10 * 60); // 10 minutes TTL
+        },"EX", 10 * 60); // 10 minutes TTL
 
 
         // Generate authorization URL using connection config
@@ -166,24 +163,14 @@ router.post(`/${PROJECT_ID}/auth/oauth/:app_slug/callback`, async (req, res) => 
         }
 
         // Get OAuth state from cache
-        const oauthState = await cache.get(`oauth_state:${state}`);
+        let oauthState = await cache.get(`oauth_state:${state}`);
 
         if (!oauthState) {
             return res.status(400).json({
                 error: 'Invalid or expired state'
             });
         }
-
-        // Check if state is expired
-        if (new Date() > new Date(oauthState.expires_at)) {
-            // Clean up oauth from cache
-            await cache.del(`oauth_state:${state}`);
-                        
-            return res.status(400).json({
-                error: 'OAuth state expired'
-            });
-        }
-
+        oauthState = JSON.parse(oauthState);
         // Load connection config
         const connectionConfig = await loadConnectionConfig(app_slug);
         if (!connectionConfig) {
@@ -251,10 +238,15 @@ router.post('/accounts', async (req, res) => {
         }
 
         // Load connection config
-        const connectionConfig = await loadConnectionConfig(app_slug);
-        if (!connectionConfig || connectionConfig.type !== 'keys') {
+        const requested_app = await componentSystem.getApp(app_slug);
+        if (!requested_app) {
             return res.status(400).json({
-                error: `App ${app_slug} does not support custom authentication`
+                error: 'App not found'
+            });
+        }
+        if (requested_app.auth_type != 'keys') {
+            return res.status(400).json({
+                error: 'App does not support custom authentication'
             });
         }
 
@@ -267,15 +259,12 @@ router.post('/accounts', async (req, res) => {
         }
         const external_user_id = user_token_data.external_user_id;
 
-        // Validate credentials using connection config
-        const validatedCredentials = await connectionConfig.methods.connect(cfmap_json || {});
-
         // Create account with validated credentials
         const apn_key = `apn_${uuidv4().replace(/-/g, '').substring(0, 16)}`;
         await new Promise((resolve, reject) => {
             getDB().run(
                 'INSERT INTO accounts (id, app_key, external_user_id, app_slug, credentials_json, auth_type) VALUES (?, ?, ?, ?, ?, ?)',
-                [apn_key, apn_key, external_user_id, app_slug, JSON.stringify(validatedCredentials), 'keys'],
+                [apn_key, apn_key, external_user_id, app_slug, cfmap_json, 'keys'],
                 (err) => {
                     if (err) reject(err);
                     else resolve();
@@ -301,7 +290,7 @@ router.post('/accounts', async (req, res) => {
             external_user_id: account.external_user_id,
             label: `${app_slug} (${account.external_user_id})`,
             created_at: account.created_at,
-            masked: maskCredentials(validatedCredentials)
+            masked: maskCredentials(JSON.parse(cfmap_json))
         });
     } catch (error) {
         console.error('Error in custom auth:', error);

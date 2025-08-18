@@ -62,7 +62,6 @@ Content-Type: application/json
 Authorization: Bearer {{auth_token}}
 X-PD-Environment: development
 
-# xx
 ### Run SerpAPI search action (Pipedream v1 API)
 POST {{base_url}}/v1/connect/{{pd_project_id}}/actions/run
 Content-Type: application/json
@@ -113,6 +112,21 @@ X-PD-Environment: development
 {
   "external_user_id": "user-123"
 }
+###
+GET {{base_url}}/v1/connect/{{pd_project_id}}/auth/oauth/slack/start?external_user_id=user-123
+Content-Type: application/json
+Authorization: Bearer {{auth_token}}
+X-PD-Environment: development
+
+### 
+POST {{base_url}}/v1/connect/{{pd_project_id}}/auth/oauth/slack/callback
+Content-Type: application/json
+Authorization: Bearer {{auth_token}}
+X-PD-Environment: development
+{
+  "code": "your_slack_code_here",
+  "state": "your_state_here"
+}
 
 ### for "keys" type auth creation
 POST {{base_url}}/v1/connect/accounts
@@ -138,14 +152,13 @@ X-PD-Environment: development
 
 ## data: [{id: apn_..., name: .. ,updated_at: , created_at: .. ,healthy: true, external_id: .. , app: ..}] , page_info: []
 
-# xx
 ### Get App Connected Accounts with sepcific app account or all by remove last ID from URL - Tested
 GET {{base_url}}/v1/connect/{{pd_project_id}}/accounts/apn_Ogher6Q
 Content-Type: application/json
 Authorization: Bearer {{auth_token}}
 X-PD-Environment: development
 
-{ // params
+{
   "external_user_id": "user-123",
   "app": "slack",
   "include_credentials": true
