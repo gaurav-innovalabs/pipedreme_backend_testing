@@ -1,18 +1,16 @@
-// perfect check remain
-
 - App's // done
 
 - Components // done 
 - Actions // done
-    - props
+    - props // done
     - dynamic props // need to check
 - Sources // done
 
-- Run Actions // issue
+- Run Actions // done
 
-- Connections and Oauth // issue
+- Connections and Oauth // done
 
-- Accounts get connections and Oauth
+- Accounts get connections and Oauth // done // need to test
 
 - Trigger Testing
 

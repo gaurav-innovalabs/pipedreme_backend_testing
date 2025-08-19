@@ -11,5 +11,5 @@ export default {
     DEFAULT_KEYS: {
         SERPAPI_DEFAULT_API_KEY: process.env.SERPAPI_DEFAULT_API_KEY,
     },
-    PROJECT_ID: "proj_zNsg4Me",
+    PROJECT_ID: process.env.PIPEDREAM_PROJECT_ID || "local-project",
 }
