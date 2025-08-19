@@ -1,6 +1,8 @@
+import dotenv from "dotenv";
+dotenv.config();
 export default {
-    BE_URL: "http://localhost:3000",
-    PORT: process.env.PORT || 3000,
+    BE_URL: process.env.BE_URL || "http://localhost:3000",
+    PORT: process.env.PORT || 3000, // for internal
     OAUTH: {
         SLACK_CLIENT_ID: process.env.SLACK_CLIENT_ID,
         SLACK_CLIENT_SECRET: process.env.SLACK_CLIENT_SECRET,

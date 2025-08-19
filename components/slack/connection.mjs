@@ -10,7 +10,7 @@ export default {
         token_url: "https://slack.com/api/oauth.v2.access",
         scope: [
             "channels:read",
-            "channels:write", 
+            // "channels:write", 
             "channels:history",
             "chat:write",
             "chat:write.public",
@@ -23,6 +23,7 @@ export default {
             "users:read",
             "files:read",
             "files:write",
+            "users:read",
             "reactions:read",
             "reactions:write",
             "reminders:read",
@@ -34,10 +35,8 @@ export default {
     },
     
     methods: {
-        connection_link(external_user_id, redirect_uri) {
+        connection_link(external_user_id, redirect_uri, state) {
             const oauth = this.oauth_details;
-            const state = `${external_user_id}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-            
             const params = new URLSearchParams({
                 client_id: oauth.client_id,
                 scope: oauth.scope,

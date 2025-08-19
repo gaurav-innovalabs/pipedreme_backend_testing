@@ -25,10 +25,10 @@ GET {{base_url}}/v1/apps
 Authorization: Bearer {{auth_token}}
 
 
-@app_slug = serpapi
+# @app_slug = serpapi
 # @app_slug = test_hello
 # @app_slug = serpdog
-# @app_slug = slack
+@app_slug = slack
 
 ### List apps with search query
 GET {{base_url}}/v1/apps?q={{app_slug}}&limit=10
@@ -118,19 +118,20 @@ X-PD-Environment: development
 @connection_token = {{connectionToken.response.body.token}}
 
 ###
-GET {{base_url}}/v1/connect/{{pd_project_id}}/auth/oauth/slack/start?external_user_id={{external_user_id}}
+GET {{base_url}}/v1/connect/{{pd_project_id}}/auth/oauth/slack/start?connect_token={{connection_token}}
 Content-Type: application/json
 Authorization: Bearer {{auth_token}}
 X-PD-Environment: development
 
 ### 
-POST {{base_url}}/v1/connect/{{pd_project_id}}/auth/oauth/slack/callback
+@state=your_state_here
+@code=your_slack_code_here
+GET {{base_url}}/v1/connect/{{pd_project_id}}/auth/oauth/slack/callback?code=254223766679.9386751552129.07508bcfd2ac416a8d2ac2c628ce7d25906ece4ec4fe192cd36eb0c25b3b2884&state=user_123_1755594037994_0g2ube
 Content-Type: application/json
 Authorization: Bearer {{auth_token}}
 X-PD-Environment: development
 {
-  "code": "your_slack_code_here",
-  "state": "your_state_here"
+
 }
 
 ### for "keys" type auth creation

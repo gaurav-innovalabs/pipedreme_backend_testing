@@ -32,8 +32,16 @@ app.use('/_static', express.static('_static'));
 
 // Logging
 app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} ${req.method} ${req.path} ${res.statusCode} ${res.data}`);
-    next();
+  const start = Date.now();
+
+  res.on("finish", () => {
+    const duration = Date.now() - start;
+    console.log(
+      `${new Date().toISOString()} ${req.method} ${req.originalUrl} -> ${res.statusCode} (${duration}ms)`
+    );
+  });
+
+  next();
 });
 
 // Serve static files from _static directory

@@ -5,6 +5,7 @@ import { getDB } from '../core/database.mjs';
 import config from '../config.mjs';
 import cache from '../core/cache.mjs';
 import componentSystem from '../core/ComponentSystem.mjs';
+import { ConnectionTokenError } from '../core/exception_helper/connection_token_error.mjs';
 
 const host_url = config.BE_URL;
 const PROJECT_ID = config.PROJECT_ID;
@@ -45,9 +46,10 @@ async function getUserByConnectToken(token) {
             expires_at: cachedToken.expires_at
         };
     }
-    throw new Error('Invalid or expired connect token');
-}
 
+    throw new ConnectionTokenError("Invalid connect token", 401);
+}
+  
 // Helper function to load connection config
 async function loadConnectionConfig(appSlug) {
     try {
@@ -105,11 +107,18 @@ router.post(`/${PROJECT_ID}/tokens`, async (req, res) => {
 router.get(`/${PROJECT_ID}/auth/oauth/:app_slug/start`, async (req, res) => {
     try {
         const { app_slug } = req.params;
-        const { external_user_id } = req.query;
+        const { connect_token } = req.query;
         const redirect_uri = `${host_url}/v1/connect/${PROJECT_ID}/auth/oauth/${app_slug}/callback`;
-        if (!external_user_id) {
+        if (!connect_token) {
             return res.status(400).json({
-                error: 'external_user_id are required'
+                error: 'connect_token are required'
+            });
+        }
+        const user_token_data = await getUserByConnectToken(connect_token);
+        const external_user_id = user_token_data.external_user_id;
+        if(external_user_id == undefined) {
+            return res.status(401).json({
+                error: 'Invalid connect token'
             });
         }
 
@@ -126,23 +135,26 @@ router.get(`/${PROJECT_ID}/auth/oauth/:app_slug/start`, async (req, res) => {
         const expires_at = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 minutes
 
         // Store OAuth state in cache
-        await cache.set(`oauth_state:${state}`, {
+        await cache.set(`oauth_state:${state}`, JSON.stringify({
             app_slug,
             external_user_id,
             redirect_uri,
             created_at: new Date().toISOString(),
             expires_at
-        },"EX", 10 * 60); // 10 minutes TTL
+        }),"EX", 10 * 60); // 10 minutes TTL
 
 
         // Generate authorization URL using connection config
-        const authResult = connectionConfig.methods.connection_link(external_user_id, redirect_uri);
-        
+        const authResult = connectionConfig.methods.connection_link.call(connectionConfig, external_user_id, redirect_uri, state);
+
         res.json({
             authorization_url: authResult.authorization_url,
-            state: authResult.state || state
+            state: state
         });
     } catch (error) {
+        if (error instanceof ConnectionTokenError) {
+            return res.status(error.statusCode).json({ error: error.message });
+        }
         console.error('Error starting OAuth flow:', error);
         res.status(500).json({
             error: 'Failed to start OAuth flow'
@@ -151,7 +163,7 @@ router.get(`/${PROJECT_ID}/auth/oauth/:app_slug/start`, async (req, res) => {
 });
 
 // GET /v1/connect/local-project/auth/oauth/:app_slug/callback
-router.post(`/${PROJECT_ID}/auth/oauth/:app_slug/callback`, async (req, res) => {
+router.get(`/${PROJECT_ID}/auth/oauth/:app_slug/callback`, async (req, res) => {
     try {
         const { app_slug } = req.params;
         const { state, code } = req.query;
@@ -180,7 +192,7 @@ router.post(`/${PROJECT_ID}/auth/oauth/:app_slug/callback`, async (req, res) => 
         }
 
         // Exchange code for tokens using connection config
-        const tokens = await connectionConfig.methods.connect_oauth_callback(code, state);
+        const tokens = await connectionConfig.methods.connect_oauth_callback.call(connectionConfig, code, state);
 
         // Create account with OAuth tokens
         const apn_key = `apn_${uuidv4().replace(/-/g, '').substring(0, 16)}`;
@@ -252,11 +264,6 @@ router.post('/accounts', async (req, res) => {
 
         // fetch external_user for that token
         const user_token_data = await getUserByConnectToken(connect_token);
-        if (!user_token_data) {
-            return res.status(400).json({
-                error: 'Invalid or expired connect token'
-            });
-        }
         const external_user_id = user_token_data.external_user_id;
 
         // Create account with validated credentials
@@ -293,6 +300,9 @@ router.post('/accounts', async (req, res) => {
             masked: maskCredentials(JSON.parse(cfmap_json))
         });
     } catch (error) {
+        if (error instanceof ConnectionTokenError) {
+            return res.status(error.statusCode).json({ error: error.message });
+        }
         console.error('Error in custom auth:', error);
         res.status(500).json({
             error: error.message || 'Custom authentication failed'
