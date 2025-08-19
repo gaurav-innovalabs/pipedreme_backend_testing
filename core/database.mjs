@@ -30,8 +30,7 @@ export async function initDB() {
                     credentials_json TEXT NOT NULL,
                     auth_type TEXT DEFAULT 'custom',
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (external_user_id) REFERENCES users(external_user_id) ON DELETE CASCADE
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 )`,
                 
                 
@@ -46,8 +45,7 @@ export async function initDB() {
                     output_json TEXT,
                     error_message TEXT,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    completed_at DATETIME,
-                    FOREIGN KEY (external_user_id) REFERENCES users(external_user_id) ON DELETE CASCADE
+                    completed_at DATETIME
                 )`,
                 
             ];

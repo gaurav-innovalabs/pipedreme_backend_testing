@@ -1,6 +1,5 @@
 import express from 'express';
-import { v4 as uuidv4 } from 'uuid';
-import { getDB, dbGet, dbRun } from '../core/database.mjs';
+import { getDB } from '../core/database.mjs';
 import config from '../config.mjs';
 
 const host_url = config.BE_URL;
@@ -33,7 +32,11 @@ function maskCredentials(credentials) {
 router.get('/accounts', async (req, res) => {
     try {
         const { app, external_user_id, include_credentials } = req.query;
-        
+        if(external_user_id == undefined) {
+            return res.status(400).json({
+                error: 'external_user_id is required'
+            });
+        }
         let query = `SELECT * FROM accounts WHERE 1=1`;
         const params = [];
 
