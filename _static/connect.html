@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Connect App - Pipedream</title>
+    <title>Connect App - Innovalabs</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
     <style>
@@ -354,7 +354,7 @@
             </div>
             
             <div class="content">
-                <h1 class="title">We use Pipedream to connect your account</h1>
+                <h1 class="title">We use Innovalabs to connect your account</h1>
                 <p class="subtitle">Connect your {{ appName }} account securely and instantly</p>
                 
                 <!-- Step 1: Basic UI with features -->
@@ -363,14 +363,14 @@
                         <div class="feature-icon">⚡</div>
                         <div class="feature-content">
                             <h3>Connect instantly</h3>
-                            <p>Pipedream lets you securely connect your account in seconds.</p>
+                            <p>Innovalabs lets you securely connect your account in seconds.</p>
                         </div>
                     </div>
                     <div class="feature">
                         <div class="feature-icon">🔒</div>
                         <div class="feature-content">
                             <h3>Connect securely</h3>
-                            <p>More than a million developers trust Pipedream to keep their data safe.</p>
+                            <p>More than a million developers trust Innovalabs to keep their data safe.</p>
                         </div>
                     </div>
                 </div>
@@ -439,14 +439,14 @@
                 </button>
 
                 <div class="terms">
-                    By continuing, you agree to Pipedream's 
+                    By continuing, you agree to Innovalabs's 
                     <a href="#" @click.prevent="openTerms">Terms of Service</a> and 
                     <a href="#" @click.prevent="openPrivacy">Privacy Policy</a>.
                 </div>
             </div>
 
             <div class="footer">
-                pipedream
+                innovalabs
             </div>
         </div>
     </div>
@@ -464,7 +464,9 @@
                     error: null,
                     success: null,
                     fieldValues: {},
-                    showAppDetails: false 
+                    showAppDetails: false,
+                    pd_project_id: 'proj_zNsg4Me',
+                    external_user_id: 'user123'
                 };
             },
             computed: {
@@ -481,6 +483,8 @@
                     const urlParams = new URLSearchParams(window.location.search);
                     this.token = urlParams.get('token');
                     this.app = urlParams.get('app');
+                    this.pd_project_id = urlParams.get('project_id') || this.pd_project_id; 
+                    this.external_user_id = urlParams.get('external_user_id') || this.external_user_id;
                     
                     if (!this.token) {
                         this.error = 'No connection token provided';
@@ -592,11 +596,18 @@
                             // Handle OAuth flow
                             this.success = `Redirecting to ${this.appInfo.name || this.appName} for OAuth authorization...`;
                             
-                            // Here you would typically redirect to the OAuth URL
-                            // For demo purposes, we'll simulate the OAuth flow
-                            await new Promise(resolve => setTimeout(resolve, 2000));
+                            // Use the correct OAuth endpoint format with project ID and required parameters
+                            const oauthUrl = `http://localhost:3000/v1/connect/${this.pd_project_id}/auth/oauth/${this.app}/start?token=${this.token}`;
+                            console.log('Calling OAuth endpoint:', oauthUrl);
                             
-                            this.success = `Successfully connected to ${this.appInfo.name || this.appName} via OAuth!`;
+                            const response = await axios.get(oauthUrl);
+                            console.log('OAuth API response:', response.data);
+                            
+                            if (response.data.success) {
+                                this.success = `Successfully connected to ${this.appInfo.name || this.appName} via OAuth!`;
+                            } else {
+                                throw new Error('Failed to connect via OAuth');
+                            }
                         } else {
                             // Handle keys auth - call the accounts API
                             this.success = `Connecting to ${this.appInfo.name || this.appName} with provided credentials...`;
@@ -650,11 +661,11 @@
                 },
                 
                 openTerms() {
-                    window.open('https://pipedream.com/terms', '_blank');
+                    window.open('https://innovalabs.com/terms', '_blank');
                 },
                 
                 openPrivacy() {
-                    window.open('https://pipedream.com/privacy', '_blank');
+                    window.open('https://innovalabs.com/privacy', '_blank');
                 },
 
                 getContinueButtonText() {
